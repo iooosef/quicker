@@ -28,7 +28,4 @@ public class User {
     @Column(name = "userPassword", nullable = false, length = 300)
     private String userPassword;
 
-    @Nationalized
-    @Column(name = "userSalt", nullable = false, length = 50)
-    private String userSalt;
 }

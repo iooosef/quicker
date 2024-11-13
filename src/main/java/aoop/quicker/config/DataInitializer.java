@@ -24,10 +24,8 @@ public class DataInitializer implements CommandLineRunner {
             // Create an admin user
             User adminUser = new User();
             adminUser.setUserName("admin");
-            var salt = "theSalt";
             adminUser.setUserPassword(passwordEncoder.encode("admin1234"));
             adminUser.setUserRoles("ADMIN");  // Assigning a role
-            adminUser.setUserSalt(salt); // Store salt if needed
 
             // Save user to the database
             userRepository.save(adminUser);
