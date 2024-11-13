@@ -15,7 +15,6 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
-
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -33,16 +32,18 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http
-                .authorizeRequests()
-                .antMatchers("/login", "/register", "/user/roles").permitAll()
-                .antMatchers("/admin/**").hasRole("ADMIN")
-                .antMatchers("/staff/**").hasAnyRole("STAFF", "ADMIN")
-                .antMatchers("/inventory/**").hasAnyRole("INVENTORYSTAFF", "ADMIN")
-                .anyRequest().authenticated()
-                .and()
-                .formLogin().permitAll()
-                .and()
-                .logout()
-                .logoutRequestMatcher(new AntPathRequestMatcher("/logout")).permitAll();
+            .authorizeRequests()
+            .antMatchers("/login", "/register", "/user/roles").permitAll()
+            .antMatchers("/admin/**").hasRole("ADMIN")
+            .antMatchers("/staff/**").hasAnyRole("STAFF", "ADMIN")
+            .antMatchers("/inventory/**").hasAnyRole("INVENTORYSTAFF", "ADMIN")
+            .anyRequest().authenticated()
+            .and()
+            .formLogin().permitAll()
+            .and()
+            .logout()
+            .logoutRequestMatcher(new AntPathRequestMatcher("/logout")).permitAll()
+            .and()
+            .csrf().disable();
     }
 }
