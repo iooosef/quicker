@@ -6,6 +6,7 @@ import aoop.quicker.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -17,6 +18,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/auth")
@@ -35,8 +38,9 @@ public class AuthController {
         this.passwordEncoder = passwordEncoder;
     }
 
-    @RequestMapping("/login")
-    public ResponseEntity<String> authenticateUser(@RequestBody AuthViewModel model) {
+    @RequestMapping(value="/login", produces=MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<HashMap<String, String>> authenticateUser(@RequestBody AuthViewModel model) {
+        HashMap<String, String> response = new HashMap<>();
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -46,21 +50,25 @@ public class AuthController {
             );
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            return new ResponseEntity<>("User logged-in", HttpStatus.OK);
+            response.put("message", "User logged-in");
+            return new ResponseEntity<>(response, HttpStatus.OK);
 
         } catch (BadCredentialsException e) {
-            return new ResponseEntity<>("Invalid username or password", HttpStatus.UNAUTHORIZED);
+            response.put("message", "Invalid username or password");
+            return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
         } catch (AuthenticationException e) {
-            return new ResponseEntity<>("Authentication failed", HttpStatus.UNAUTHORIZED);
+            response.put("message", "Authentication failed");
+            return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
         }
     }
 
-    @RequestMapping("/register")
-    public ResponseEntity<String> registerUser(@RequestBody AuthViewModel model) {
-        logger.info(model.toString());
+    @RequestMapping(value="/register", produces=MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<HashMap<String, String>> registerUser(@RequestBody AuthViewModel model) {
+        HashMap<String, String> response = new HashMap<>();
         boolean userExist = userRepository.findByUserName(model.getUserName()).isPresent();
         if (userExist) {
-            return new ResponseEntity<>("User already exists", HttpStatus.BAD_REQUEST);
+            response.put("message", "User already exists");
+            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         }
 
         User user = new User();
@@ -69,6 +77,7 @@ public class AuthController {
         user.setUserRoles(model.getUserRoles());
 
         userRepository.save(user);
-        return new ResponseEntity<>(String.format("User \"%s\" has been registered", user.getUserName()), HttpStatus.CREATED);
+        response.put("message", String.format("User \"%s\" has been registered", user.getUserName()));
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 }
