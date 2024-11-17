@@ -31,5 +31,4 @@ public class Supply {
 
     @Column(name = "supplyPrice", precision = 19, scale = 4)
     private BigDecimal supplyPrice;
-
 }
