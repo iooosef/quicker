@@ -11,6 +11,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
+
 @RestController
 @RequestMapping("/supplies")
 public class SupplyController {
@@ -43,12 +45,53 @@ public class SupplyController {
     }
 
     @PostMapping(value="/add", produces=MediaType.APPLICATION_JSON_VALUE)
-    public Supply addSupply(@RequestBody Supply model) {
-        return supplyService.addSupply(model);
+    public ResponseEntity<?> addSupply(@RequestBody Supply model) {
+        // Validations
+        ResponseEntity<?> invalidModelResponse = this.validateSupply(model);
+        if (invalidModelResponse != null) {
+            return invalidModelResponse;
+        }
+        boolean exists = supplyService.supplyExists(model.getSupplyName());
+        if (exists) {
+            return ResponseEntity.badRequest()
+                    .body(Collections.singletonMap("error", "Supply already exists"));
+        }
+
+        // to prevent the id from being set
+        Supply supply = new Supply();
+        supply.setSupplyName(model.getSupplyName());
+        supply.setSupplyType(model.getSupplyType());
+        supply.setSupplyQty(model.getSupplyQty());
+        supply.setSupplyPrice(model.getSupplyPrice());
+
+        return ResponseEntity.ok(supplyService.addSupply(supply));
     }
 
     @PutMapping(value="/update/{id}", produces=MediaType.APPLICATION_JSON_VALUE)
-    public Supply updateSupply(@PathVariable int id, @RequestBody Supply model) {
-        return supplyService.updateSupply(id, model);
+    public ResponseEntity<?> updateSupply(@PathVariable int id, @RequestBody Supply model) {
+        ResponseEntity<?> invalidModelResponse = this.validateSupply(model);
+        if (invalidModelResponse != null) {
+            return invalidModelResponse;
+        }
+        return ResponseEntity.ok(supplyService.updateSupply(id, model));
+    }
+
+    private ResponseEntity<?> validateSupply(Supply model) {
+        boolean invalidQty = model.getSupplyQty() < 0;
+        boolean invalidPrice = model.getSupplyPrice().compareTo(java.math.BigDecimal.ZERO) < 0;
+        String errorMessage = "";
+        if (!invalidQty && !invalidPrice) {
+            return null;
+        }
+
+        if(invalidQty && invalidPrice) {
+            errorMessage = "Invalid quantity and price";
+        } else if (invalidQty) {
+            errorMessage = "Invalid quantity";
+        } else if (invalidPrice) {
+            errorMessage = "Invalid price";
+        }
+        return ResponseEntity.badRequest()
+                .body(Collections.singletonMap("error", errorMessage));
     }
 }
