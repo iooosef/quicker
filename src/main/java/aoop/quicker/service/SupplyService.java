@@ -42,7 +42,12 @@ public class SupplyService {
     // For updating a supply
     public Supply updateSupply(Integer id, Supply supply) {
         supply.setId(id);
-        return supplyRepository.save(supply); // Save supply to the database
+        return supplyRepository.save(supply);
+    }
+
+    // Supply with the given name exists
+    public boolean supplyExists(String supplyName) {
+        return supplyRepository.existsBySupplyName(supplyName);
     }
 
     /*
@@ -64,7 +69,6 @@ public class SupplyService {
                 String[] terms = query.split("\\s+"); // Split query into terms
                 for (String term : terms) {
                     Predicate predicate = null;
-                    var test = term.matches("(?i)^(\\$|PHP)\\s?\\d+(\\.\\d+)?$");
                     if (term.matches("\\d+")) {
                         /*
                         * Regex for digits: If digits, filter by quantity

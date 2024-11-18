@@ -8,4 +8,5 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 public interface SupplyRepository extends JpaRepository<Supply, Integer>, JpaSpecificationExecutor<Supply> {
     Page<Supply> findAll(Pageable pageable);
+    boolean existsBySupplyName(String supplyName);
 }
