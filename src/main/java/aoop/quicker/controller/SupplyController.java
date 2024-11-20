@@ -3,7 +3,6 @@ package aoop.quicker.controller;
 import aoop.quicker.model.Supply;
 import aoop.quicker.service.SupplyService;
 import org.slf4j.Logger;
-import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -11,7 +10,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
 @RestController
 @RequestMapping("/supplies")
@@ -40,21 +41,36 @@ public class SupplyController {
     }
 
     @RequestMapping(value="/{id}", produces=MediaType.APPLICATION_JSON_VALUE)
-    public Supply getSupply(@PathVariable int id) {
-        return supplyService.getSupplyById(id).get();
+    public ResponseEntity<?> getSupply(@PathVariable int id) {
+        List errors = new ArrayList();
+        if (!supplyService.getSupplyById(id).isPresent()) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "not_found_error");
+            error.put("message", "Supply not found");
+            error.put("target", "model");
+            errors.add(error);
+            return ResponseEntity.status(404).body(errors);
+        }
+        return ResponseEntity.ok(supplyService.getSupplyById(id).get());
     }
 
     @PostMapping(value="/add", produces=MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> addSupply(@RequestBody Supply model) {
+        List errors = new ArrayList();
         // Validations
-        ResponseEntity<?> invalidModelResponse = this.validateSupply(model);
-        if (invalidModelResponse != null) {
-            return invalidModelResponse;
+        var invalidModelResponse = this.validateSupply(model);
+        if (!invalidModelResponse.isEmpty()) {
+            errors.addAll(invalidModelResponse);
         }
         boolean exists = supplyService.supplyExists(model.getSupplyName());
         if (exists) {
-            return ResponseEntity.badRequest()
-                    .body(Collections.singletonMap("error", "Supply already exists"));
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "validation_error");
+            error.put("message", "Supply already exists");
+            error.put("target", "model");
+        }
+        if (!errors.isEmpty()) {
+            return ResponseEntity.badRequest().body(errors);
         }
 
         // to prevent the id from being set
@@ -69,29 +85,71 @@ public class SupplyController {
 
     @PutMapping(value="/update/{id}", produces=MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> updateSupply(@PathVariable int id, @RequestBody Supply model) {
-        ResponseEntity<?> invalidModelResponse = this.validateSupply(model);
-        if (invalidModelResponse != null) {
-            return invalidModelResponse;
+        List errors = new ArrayList();
+        var invalidModelResponse = this.validateSupply(model);
+        if (!invalidModelResponse.isEmpty()) {
+            errors.addAll(invalidModelResponse);
         }
+        if (!supplyService.getSupplyById(id).isPresent()) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "not_found_error");
+            error.put("message", "Supply not found");
+            error.put("target", "model");
+            errors.add(error);
+        }
+        if (!errors.isEmpty()) {
+            return ResponseEntity.badRequest().body(errors);
+        }
+
         return ResponseEntity.ok(supplyService.updateSupply(id, model));
     }
 
-    private ResponseEntity<?> validateSupply(Supply model) {
+    private List validateSupply(Supply model) {
+        List errors = new ArrayList();
+        if (model.getSupplyName() == null || model.getSupplyName().isEmpty()) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "validation_error");
+            error.put("message", "Supply name is required");
+            error.put("target", "model");
+            errors.add(error);
+        }
+        if (model.getSupplyType() == null || model.getSupplyType().isEmpty()) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "validation_error");
+            error.put("message", "Supply type is required");
+            error.put("target", "model");
+            errors.add(error);
+        }
+        if (model.getSupplyQty() == null) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "validation_error");
+            error.put("message", "Supply quantity is required");
+            error.put("target", "model");
+            errors.add(error);
+        }
+        if (model.getSupplyPrice() == null) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "validation_error");
+            error.put("message", "Supply price is required");
+            error.put("target", "model");
+            errors.add(error);
+        }
         boolean invalidQty = model.getSupplyQty() < 0;
+        if (invalidQty) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "validation_error");
+            error.put("message", "Invalid quantity");
+            error.put("target", "model");
+            errors.add(error);
+        }
         boolean invalidPrice = model.getSupplyPrice().compareTo(java.math.BigDecimal.ZERO) < 0;
-        String errorMessage = "";
-        if (!invalidQty && !invalidPrice) {
-            return null;
+        if (invalidPrice) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "validation_error");
+            error.put("message", "Invalid price");
+            error.put("target", "model");
+            errors.add(error);
         }
-
-        if(invalidQty && invalidPrice) {
-            errorMessage = "Invalid quantity and price";
-        } else if (invalidQty) {
-            errorMessage = "Invalid quantity";
-        } else if (invalidPrice) {
-            errorMessage = "Invalid price";
-        }
-        return ResponseEntity.badRequest()
-                .body(Collections.singletonMap("error", errorMessage));
+        return errors;
     }
 }
