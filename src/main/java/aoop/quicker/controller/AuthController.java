@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.HashMap;
+import java.util.*;
 
 @RestController
 @RequestMapping("/auth")
@@ -39,8 +39,10 @@ public class AuthController {
     }
 
     @RequestMapping(value="/login", produces=MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<HashMap<String, String>> authenticateUser(@RequestBody AuthViewModel model) {
+    public ResponseEntity<?> authenticateUser(@RequestBody AuthViewModel model) {
         HashMap<String, String> response = new HashMap<>();
+        List errors = new ArrayList();
+
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -50,25 +52,42 @@ public class AuthController {
             );
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            response.put("message", "User logged-in");
+            String role = authentication.getAuthorities().stream().findFirst().get().getAuthority();
+            String loginDatetime = java.time.LocalDateTime.now().toString();
+            response.put("username", model.getUserName());
+            response.put("role", role);
+            response.put("loginDatetime", loginDatetime);
+
             return new ResponseEntity<>(response, HttpStatus.OK);
 
         } catch (BadCredentialsException e) {
-            response.put("message", "Invalid username or password");
-            return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "authentication_error");
+            error.put("message", "Invalid username or password");
+            error.put("target", "model");
+            errors.add(error);
         } catch (AuthenticationException e) {
-            response.put("message", "Authentication failed");
-            return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "authentication_error");
+            error.put("message", "Authentication failed");
+            error.put("target", "model");
         }
+        return new ResponseEntity<>(Collections.singletonMap("errors", errors), HttpStatus.UNAUTHORIZED);
     }
 
+
     @RequestMapping(value="/register", produces=MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<HashMap<String, String>> registerUser(@RequestBody AuthViewModel model) {
+    public ResponseEntity<?> registerUser(@RequestBody AuthViewModel model) {
         HashMap<String, String> response = new HashMap<>();
+        List errors = new ArrayList();
         boolean userExist = userRepository.findByUserName(model.getUserName()).isPresent();
         if (userExist) {
-            response.put("message", "User already exists");
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "validation_error");
+            error.put("message", "User already exists");
+            error.put("target", "userName");
+            errors.add(error);
+            return new ResponseEntity<>(Collections.singletonMap("errors", errors), HttpStatus.BAD_REQUEST);
         }
 
         User user = new User();
@@ -77,7 +96,8 @@ public class AuthController {
         user.setUserRoles(model.getUserRoles());
 
         userRepository.save(user);
-        response.put("message", String.format("User \"%s\" has been registered", user.getUserName()));
+        response.put("userName", user.getUserName());
+        response.put("userRoles", user.getUserRoles());
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 }
