@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 
 @RestController
 @RequestMapping("/beds")
@@ -40,8 +42,17 @@ public class BedController {
     }
 
     @RequestMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Bed getBed(@PathVariable int id) {
-        return bedService.getBedById(id).get();
+    public ResponseEntity<?> getBed(@PathVariable int id) {
+        List errors = Collections.emptyList();
+        if (!bedService.getBedById(id).isPresent()) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "not_found_error");
+            error.put("message", "Bed not found");
+            error.put("target", "model");
+            errors.add(error);
+            return ResponseEntity.status(404).body(errors);
+        }
+        return ResponseEntity.ok(bedService.getBedById(id).get());
     }
 
     @PostMapping(value = "/add", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -57,30 +68,36 @@ public class BedController {
 
     @PutMapping(value = "/update/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> updateBed(@PathVariable int id, @RequestBody Bed model) {
+        List errors = Collections.emptyList();
         // Validation to prevent having two or more available beds in the same location
         boolean isNewStatusAvailable = model.getBedStatus().equals("available");
         boolean isAvailable = bedService.isAlreadyAvailable(model.getBedLocCode());
         if (isNewStatusAvailable && isAvailable) {
             // If the new status is available and the location code is available
             // then return a bad request
-            return ResponseEntity
-                    .badRequest()
-                    .body(Collections.singletonMap("error", "This location already has a bed."));
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "validation_error");
+            error.put("message", "This location already has a bed.");
+            error.put("target", "model");
+            errors.add(error);
+            return ResponseEntity.badRequest().body(errors);
         }
 
         // Validation to prevent changing of status of already disposed beds
         boolean isDisposed = bedService.getBedById(id).get().getBedStatus().equals("Disposed");
         boolean isNewStatusDisposed = model.getBedStatus().equals("Disposed");
         if (isDisposed && !isNewStatusDisposed) {
+            HashMap<String, String> error = new HashMap<>();
             // If the bed is already disposed and the new status is not disposed
             // then return a bad request
-            return ResponseEntity
-                    .badRequest()
-                    .body(Collections.singletonMap("error", "This bed is already disposed."));
+            error.put("type", "validation_error");
+            error.put("message", "This bed is already disposed.");
+            error.put("target", "model");
+            errors.add(error);
+            return ResponseEntity.badRequest().body(errors);
         }
 
         model.setId(id);
         return ResponseEntity.ok(bedService.updateBed(id, model));
-        //return bedService.updateBed(id, model);
     }
 }
