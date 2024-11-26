@@ -16,8 +16,8 @@ public class PatientTreatmentOrder {
     @Column(name = "patientTreatmentsID", nullable = false)
     private Integer id;
 
-    @Column(name = "patientID", nullable = false)
-    private Integer patientID;
+    @Column(name = "admissionID", nullable = false)
+    private Integer admissionID;
 
     @Column(name = "supplyID", nullable = false)
     private Integer supplyID;

@@ -1,7 +1,7 @@
 USE [quicker]
 GO
 
-/****** Object:  Table [dbo].[PatientLabOrders]    Script Date: 11/12/2024 22:37:17 ******/
+/****** Object:  Table [dbo].[PatientLabOrders]    Script Date: 11/27/2024 04:50:39 ******/
 SET ANSI_NULLS ON
 GO
 
@@ -10,7 +10,7 @@ GO
 
 CREATE TABLE [dbo].[PatientLabOrders](
 	[patientLabsID] [int] IDENTITY(1,1) NOT NULL,
-	[patientID] [int] NOT NULL,
+	[admissionID] [int] NOT NULL,
 	[supplyID] [int] NOT NULL,
 	[labOrderedOn] [datetime] NOT NULL,
 	[labResultStatus] [nvarchar](50) NOT NULL,
@@ -21,5 +21,4 @@ CREATE TABLE [dbo].[PatientLabOrders](
 ) ON [PRIMARY]
 
 GO
-
 

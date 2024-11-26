@@ -16,8 +16,8 @@ public class PatientsHMO {
     @Column(name = "patientHMOID", nullable = false)
     private Integer id;
 
-    @Column(name = "patientID", nullable = false)
-    private Integer patientID;
+    @Column(name = "admissionID", nullable = false)
+    private Integer admissionID;
 
     @Nationalized
     @Column(name = "HMOIDNum", nullable = false)

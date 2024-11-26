@@ -17,8 +17,8 @@ public class PatientBilling {
     @Column(name = "patientBillingID", nullable = false)
     private Integer id;
 
-    @Column(name = "patientID", nullable = false)
-    private Integer patientID;
+    @Column(name = "admissionID", nullable = false)
+    private Integer admissionID;
 
     @Nationalized
     @Column(name = "billingItemDetails", nullable = false)
