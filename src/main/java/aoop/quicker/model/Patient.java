@@ -26,12 +26,12 @@ public class Patient {
     @Column(name = "patientGender", nullable = false, length = 20)
     private String patientGender;
 
-    @Column(name = "patientDOB", nullable = false)
+    @Column(name = "patientDOB")
     private Instant patientDOB;
 
     @Nationalized
     @Lob
-    @Column(name = "patientAddress", nullable = false)
+    @Column(name = "patientAddress")
     private String patientAddress;
 
     @Nationalized
