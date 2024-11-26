@@ -1,0 +1,7 @@
+"pre-admission"
+"admitted-ER"
+"in-surgery"
+"paid-for-discharge"
+"discharged"
+"transferred"
+"admitted-to-ward"
