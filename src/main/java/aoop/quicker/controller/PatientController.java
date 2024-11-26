@@ -58,6 +58,14 @@ public class PatientController {
     @PostMapping(value="/patient", produces= MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> addPatient(@RequestBody Patient patient) {
         List errors = validatePatient(patient);
+        boolean isPatientExists = patientService.isPatientExists(patient.getPatientFullName(), patient.getPatientGender(), patient.getPatientDOB());
+        if (isPatientExists) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "validation_error");
+            error.put("message", "Patient already exists");
+            error.put("target", "model");
+            errors.add(error);
+        }
         if (!errors.isEmpty()) {
             return ResponseEntity.status(400).body(errors);
         }
@@ -96,14 +104,6 @@ public class PatientController {
             error.put("type", "validation_error");
             error.put("message", "Patient gender is required");
             error.put("target", "patientGender");
-            errors.add(error);
-        }
-        boolean isPatientExists = patientService.isPatientExists(model.getPatientFullName(), model.getPatientGender(), model.getPatientDOB());
-        if (isPatientExists) {
-            HashMap<String, String> error = new HashMap<>();
-            error.put("type", "validation_error");
-            error.put("message", "Patient already exists");
-            error.put("target", "model");
             errors.add(error);
         }
         return errors;
