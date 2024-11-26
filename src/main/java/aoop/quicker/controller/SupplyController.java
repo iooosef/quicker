@@ -54,7 +54,7 @@ public class SupplyController {
         return ResponseEntity.ok(supplyService.getSupplyById(id).get());
     }
 
-    @PostMapping(value="/add", produces=MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value="/supply", produces=MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> addSupply(@RequestBody Supply model) {
         List errors = new ArrayList();
         // Validations
@@ -83,7 +83,7 @@ public class SupplyController {
         return ResponseEntity.ok(supplyService.addSupply(supply));
     }
 
-    @PutMapping(value="/update/{id}", produces=MediaType.APPLICATION_JSON_VALUE)
+    @PutMapping(value="/supply/{id}", produces=MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> updateSupply(@PathVariable int id, @RequestBody Supply model) {
         List errors = new ArrayList();
         var invalidModelResponse = this.validateSupply(model);

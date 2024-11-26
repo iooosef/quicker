@@ -55,7 +55,7 @@ public class BedController {
         return ResponseEntity.ok(bedService.getBedById(id).get());
     }
 
-    @PostMapping(value = "/add", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/bed", produces = MediaType.APPLICATION_JSON_VALUE)
     public Bed addBed() {
         // Default location at 000 and status of inactive
         // New beds are stored in the storage first before being assigned to a location
@@ -66,7 +66,7 @@ public class BedController {
         return bedService.addBed(model);
     }
 
-    @PutMapping(value = "/update/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PutMapping(value = "/bed/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> updateBed(@PathVariable int id, @RequestBody Bed model) {
         List errors = Collections.emptyList();
         // Validation to prevent having two or more available beds in the same location
