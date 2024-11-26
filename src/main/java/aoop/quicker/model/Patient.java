@@ -18,21 +18,41 @@ public class Patient {
     private Integer id;
 
     @Nationalized
-    @Column(name = "patientName", nullable = false)
-    private String patientName;
-
-    @Column(name = "patientTriage", nullable = false)
-    private Integer patientTriage;
+    @Lob
+    @Column(name = "patientFullName", nullable = false)
+    private String patientFullName;
 
     @Nationalized
-    @Column(name = "patientStatus", nullable = false, length = 50)
-    private String patientStatus;
+    @Column(name = "patientGender", nullable = false, length = 20)
+    private String patientGender;
+
+    @Column(name = "patientDOB", nullable = false)
+    private Instant patientDOB;
 
     @Nationalized
-    @Column(name = "patientBedLocCode", nullable = false, length = 50)
-    private String patientBedLocCode;
+    @Lob
+    @Column(name = "patientAddress", nullable = false)
+    private String patientAddress;
 
-    @Column(name = "patientAddedOn", nullable = false)
-    private Instant patientAddedOn;
+    @Nationalized
+    @Column(name = "patientContactNum", length = 30)
+    private String patientContactNum;
+
+    @Nationalized
+    @Lob
+    @Column(name = "patientEmergencyContactName")
+    private String patientEmergencyContactName;
+
+    @Nationalized
+    @Column(name = "patientEmergencyContactNum", length = 30)
+    private String patientEmergencyContactNum;
+
+    @Nationalized
+    @Column(name = "patientPWDID", length = 60)
+    private String patientPWDID;
+
+    @Nationalized
+    @Column(name = "patientSeniorID", length = 60)
+    private String patientSeniorID;
 
 }
