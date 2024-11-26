@@ -12,12 +12,13 @@ import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
 @RestController
-@RequestMapping("/patients")
+@RequestMapping("/patient-admissions")
 public class PatientAdmissionController {
     private final Logger log = LoggerFactory.getLogger(PatientAdmissionController.class);
     private final PatientAdmissionService patientAdmissionService;
@@ -57,19 +58,21 @@ public class PatientAdmissionController {
         return ResponseEntity.ok(patientAdmissionService.getPatientAdmissionById(id).get());
     }
 
-    @PostMapping(value="/add", produces= MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> addPatient(@RequestBody PatientAdmission model) {
-        List errors = validatePatient(model, true);
+    @PostMapping(value="/admission", produces= MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> addPatientAdmission(@RequestBody PatientAdmission model) {
+        List errors = validatePatientAdmission(model, true);
         if (!errors.isEmpty()) {
             return ResponseEntity.status(400).body(errors);
         }
+        Instant currentInstant = Instant.now();
+        model.setPatientAdmitOn(currentInstant);
         PatientAdmission patient = patientAdmissionService.addPatientAdmission(model);
         return ResponseEntity.ok(patient);
     }
 
-    @PostMapping(value="/add/force", produces=MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> addPatientForce(@RequestBody PatientAdmission model, @RequestParam boolean force) {
-        List errors = validatePatient(model, true);
+    @PostMapping(value="/admission/force", produces=MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> addPatientAdmissionForce(@RequestBody PatientAdmission model, @RequestParam boolean force) {
+        List errors = validatePatientAdmission(model, true);
         if (!force) {
             HashMap<String, String> error = new HashMap<>();
             error.put("type", "validation_error");
@@ -80,13 +83,41 @@ public class PatientAdmissionController {
         if (!errors.isEmpty()) {
             return ResponseEntity.status(400).body(errors);
         }
+        Instant currentInstant = Instant.now();
+        model.setPatientAdmitOn(currentInstant);
         PatientAdmission patient = patientAdmissionService.addPatientAdmission(model);
         return ResponseEntity.ok(patient);
     }
 
-    @PutMapping(value="/update/{id}", produces=MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> updatePatient(@PathVariable int id, @RequestBody PatientAdmission model) {
-        List errors = validatePatient(model, false);
+    @PutMapping(value="/admission/{id}", produces=MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> updatePatientAdmission(@PathVariable int id, @RequestBody PatientAdmission model) {
+        List errors = validatePatientAdmission(model, false);
+        if (!patientAdmissionService.getPatientAdmissionById(id).isPresent()) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "not_found_error");
+            error.put("message", "Patient not found");
+            error.put("target", "model");
+            errors.add(error);
+        }
+        if (!errors.isEmpty()) {
+            return ResponseEntity.status(400).body(errors);
+        }
+        var addedOn = patientAdmissionService.getPatientAdmissionById(id).get().getPatientAdmitOn();
+        model.setPatientAdmitOn(addedOn);
+        PatientAdmission patient = patientAdmissionService.updatePatientAdmission(id, model);
+        return ResponseEntity.ok(patient);
+    }
+
+    @PutMapping(value="/admission/{id}/patient", produces=MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> setAdmissionPatientID(@PathVariable int id, @RequestBody PatientAdmission model) {
+        List errors = validatePatientAdmission(model, false);
+        if (model.getPatientID() == null || model.getPatientID() <= 0) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "validation_error");
+            error.put("message", "Patient ID is required");
+            error.put("target", "patientID");
+            errors.add(error);
+        }
         if (!errors.isEmpty()) {
             return ResponseEntity.status(400).body(errors);
         }
@@ -94,7 +125,7 @@ public class PatientAdmissionController {
         return ResponseEntity.ok(patient);
     }
 
-    private List validatePatient(PatientAdmission model, boolean isAdd) {
+    private List validatePatientAdmission(PatientAdmission model, boolean isAdd) {
         List errors = new ArrayList();
         if (model.getPatientName() == null || model.getPatientName().isEmpty()) {
             HashMap<String, String> error = new HashMap<>();
@@ -124,8 +155,15 @@ public class PatientAdmissionController {
             error.put("target", "patientBedLocCode");
             errors.add(error);
         }
+        if (model.getPatientERCause() == null) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "validation_error");
+            error.put("message", "Patient's emergency reason is required");
+            error.put("target", "patientERCause");
+            errors.add(error);
+        }
         if (isAdd) {
-            boolean isNewPatientDuplicate = patientAdmissionService.isPatientAdmissionAddedInTheLast(model.getPatientName(), DUPLICATE_CHECK_TRERESHOLD);
+            boolean isNewPatientDuplicate = patientAdmissionService.isPatientAdmissionAddedInTheLast(model.getPatientName(), model.getPatientERCause(), DUPLICATE_CHECK_TRERESHOLD);
             if (isNewPatientDuplicate) {
                 HashMap<String, String> error = new HashMap<>();
                 error.put("type", "validation_error");
