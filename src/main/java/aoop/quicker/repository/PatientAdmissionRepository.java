@@ -11,5 +11,5 @@ import java.util.List;
 
 public interface PatientAdmissionRepository extends JpaRepository<PatientAdmission, Integer>, JpaSpecificationExecutor<PatientAdmission> {
     Page<PatientAdmission> findAll(Pageable pageable);
-    List<PatientAdmission> findAllByPatientNameAndPatientAdmitOn(String patientName, Instant patientAdmitOn);
+    List<PatientAdmission> findAllByPatientNameAndPatientAdmitOnGreaterThan(String patientName, Instant patientAdmitOn);
 }

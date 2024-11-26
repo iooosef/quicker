@@ -50,19 +50,20 @@ public class PatientAdmissionService {
         * - The patient is considered to be added if the patient is still in the ER
         * - The patient is still in the ER if the patient status is not Discharged, Transferred, or Moved to Morgue
      */
-    public boolean isPatientAdmissionAddedInTheLast(String patientName, Duration duration) {
+    public boolean isPatientAdmissionAddedInTheLast(String patientName, String erCause, Duration duration) {
         Instant lastDuration = Instant.now().minus(duration);
-        List<PatientAdmission> patients = patientAdmissionRepository.findAllByPatientNameAndPatientAdmitOn(patientName, lastDuration);
+        List<PatientAdmission> patients = patientAdmissionRepository.findAllByPatientNameAndPatientAdmitOnGreaterThan(patientName, lastDuration);
         boolean existFlag = false;
         for (PatientAdmission patient : patients) {
             boolean patientNameEquals = patient.getPatientName().equals(patientName);
+            boolean patientERCauseEquals = patient.getPatientERCause().equals(erCause);
             boolean patientStatusDischarged = patient.getPatientStatus().equals("Discharged");
             boolean patientStatusTransferred = patient.getPatientStatus().equals("Transferred");
             boolean patientStatusMovedToMorgue = patient.getPatientStatus().equals("Moved to Morgue");
             boolean patientStillInER = !patientStatusDischarged &&
                                         !patientStatusTransferred &&
                                         !patientStatusMovedToMorgue;
-            if (patientNameEquals && patientStillInER) {
+            if (patientStillInER && patientNameEquals && patientERCauseEquals) {
                 existFlag = true;
             }
         }
