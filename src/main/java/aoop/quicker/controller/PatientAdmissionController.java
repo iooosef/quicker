@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/patient-admissions")
@@ -108,9 +109,9 @@ public class PatientAdmissionController {
         return ResponseEntity.ok(patient);
     }
 
-    @PutMapping(value="/admission/{id}/patient", produces=MediaType.APPLICATION_JSON_VALUE)
+    @PutMapping(value="/admission/patientID/{id}", produces=MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> setAdmissionPatientID(@PathVariable int id, @RequestBody PatientAdmission model) {
-        List errors = validatePatientAdmission(model, false);
+        List errors = new ArrayList();
         if (model.getPatientID() == null || model.getPatientID() <= 0) {
             HashMap<String, String> error = new HashMap<>();
             error.put("type", "validation_error");
@@ -118,11 +119,20 @@ public class PatientAdmissionController {
             error.put("target", "patientID");
             errors.add(error);
         }
+        Optional<PatientAdmission> ogPatient = patientAdmissionService.getPatientAdmissionById(id);
+        if (!ogPatient.isPresent()) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "not_found_error");
+            error.put("message", "Patient not found");
+            error.put("target", "model");
+            errors.add(error);
+        }
         if (!errors.isEmpty()) {
             return ResponseEntity.status(400).body(errors);
         }
-        PatientAdmission patient = patientAdmissionService.updatePatientAdmission(id, model);
-        return ResponseEntity.ok(patient);
+        ogPatient.get().setPatientID(model.getPatientID());
+        PatientAdmission updatedPatient = patientAdmissionService.updatePatientAdmission(id, ogPatient.get());
+        return ResponseEntity.ok(updatedPatient);
     }
 
     private List validatePatientAdmission(PatientAdmission model, boolean isAdd) {
