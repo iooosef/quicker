@@ -16,8 +16,8 @@ public class PatientConsent {
     @Column(name = "consentID", nullable = false)
     private Integer id;
 
-    @Column(name = "patientID", nullable = false)
-    private Integer patientID;
+    @Column(name = "admissionID", nullable = false)
+    private Integer admissionID;
 
     @Column(name = "consentSignedOn", nullable = false)
     private Instant consentSignedOn;
