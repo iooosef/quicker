@@ -1,0 +1,5 @@
+1 - Immediate (Critical)
+2 - Emergent
+3 - Urgent
+4 - Semi-Urgent
+5 - Non-Urgent
