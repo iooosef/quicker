@@ -2,8 +2,11 @@ package aoop.quicker.controller;
 
 import aoop.quicker.model.PatientsHMO;
 import aoop.quicker.service.PatientsHMOService;
+import org.apache.coyote.Response;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.slf4j.Logger;
@@ -42,9 +45,38 @@ public class PatientsHMOController {
         return ResponseEntity.ok(patientsHMO.get());
     }
 
-    private List validatePatientsHMO(PatientsHMO model) {
+    @RequestMapping(value="/hmo", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> addPatientsHMO(@RequestBody PatientsHMO model) {
+        List errors = validatePatientsHMO(model.getAdmissionID(), model);
+        if (!errors.isEmpty()) {
+            return ResponseEntity.status(400).body(errors);
+        }
+        model.setHMOStatus("Pending");
+        PatientsHMO patientsHMO = patientsHMOService.addPatientsHMO(model);
+        return ResponseEntity.ok(patientsHMO);
+    }
+
+    @PutMapping(value="/hmo/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> updateHMOByAdmissionID(Integer id, @RequestBody PatientsHMO model) {
+        List errors = validatePatientsHMO(id, model);
+        if (!errors.isEmpty()) {
+            return ResponseEntity.status(400).body(errors);
+        }
+        PatientsHMO updatedPatientsHMO = patientsHMOService.updatePatientsHMO(id, model);
+        return ResponseEntity.ok(updatedPatientsHMO);
+    }
+
+    private List validatePatientsHMO(Integer admissionID, PatientsHMO model) {
         List errors = new ArrayList();
-        if (model.getAdmissionID() == null || model.getAdmissionID() == "") {
+        boolean hmoForThisPatientExists = patientsHMOService.getPatientsHMOByAdmissionID(admissionID).isPresent();
+        if (hmoForThisPatientExists) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "validation_error");
+            error.put("message", "HMO has already been requested for this patient");
+            error.put("target", "model");
+            errors.add(error);
+        }
+        if (model.getAdmissionID() == null) {
             HashMap<String, String> error = new HashMap<>();
             error.put("type", "validation_error");
             error.put("message", "Admission ID is required");
@@ -63,6 +95,13 @@ public class PatientsHMOController {
             error.put("type", "validation_error");
             error.put("message", "Employer is required");
             error.put("target", "HMOEmployer");
+            errors.add(error);
+        }
+        if (model.getHMOSignature() == null) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "validation_error");
+            error.put("message", "Signature is required");
+            error.put("target", "hMOSignature");
             errors.add(error);
         }
         return errors;
