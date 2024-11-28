@@ -1,6 +1,5 @@
 package aoop.quicker.repository;
 
-import aoop.quicker.model.Patient;
 import aoop.quicker.model.PatientLog;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

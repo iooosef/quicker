@@ -1,6 +1,5 @@
 package aoop.quicker.service;
 
-import aoop.quicker.model.Patient;
 import aoop.quicker.model.PatientLog;
 import aoop.quicker.repository.PatientLogRepository;
 import org.springframework.data.domain.Page;
