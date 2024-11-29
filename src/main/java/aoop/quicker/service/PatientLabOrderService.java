@@ -22,7 +22,7 @@ import java.util.Optional;
 
 @Service
 public class PatientLabOrderService {
-    final String DRIVER = "com.ms.sqlserver.jdbc.Driver";
+    final String DRIVER = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
     final String URL;
 
     private final PatientLabOrderRepository patientLabOrderRepository;
@@ -109,62 +109,70 @@ public class PatientLabOrderService {
         return patientLabOrderRepository.findById(id);
     }
 
-    public Page<PatientLabOrder> searchPatientLabOrders(String query, Integer admissionID, Pageable pageable) {
-        Specification<PatientLabOrder> specification = PatientLabOrderSpecification.buildSpecification(query, admissionID);
-        return patientLabOrderRepository.findAll(specification, pageable);
-    }
+    public Page<PatientLabOrderViewModel> searchPatientLabOrders(String query, Integer admissionID, Pageable pageable) {
+        String queryString = "WITH CITE AS (" +
+                "   SELECT lab.patientLabsID, ROW_NUMBER() OVER (ORDER BY lab.patientLabsID) AS RowNum, " +
+                "      lab.admissionID, lab.supplyID, lab.labOrderedOn, lab.labResultStatus, sup.supplyName, sup.supplyType" +
+                "   FROM PatientLabOrders lab " +
+                "   JOIN Supplies sup ON lab.supplyID = sup.supplyID " +
+                "   WHERE lab.admissionID = ?" +
+                "   AND sup.supplyType LIKE 'test:%'" +
+                "   AND (";
+        List<String> likeClauses = new ArrayList<String>();
 
+        String[] terms = query.split("\\s+"); // Split query into terms
+        for (String term : terms) {
+            likeClauses.add("sup.supplyName LIKE ? " +
+                    "OR sup.supplyType LIKE ? " +
+                    "OR lab.labResultStatus LIKE ?");
+        }
+        queryString += String.join(" OR ", likeClauses) + ")" +
+                ") " +
+                "SELECT * FROM CITE WHERE RowNum BETWEEN ? AND ?";
+
+        int totalRecords = 0;
+        List<PatientLabOrderViewModel> patientLabOrders = new ArrayList<>();
+        try (Connection conn = DriverManager.getConnection(this.URL);
+            PreparedStatement ps = conn.prepareStatement(queryString)) {
+            ps.setInt(1, admissionID);
+
+            int paramIndex = 2;
+            for (String term : terms) {
+                ps.setString(paramIndex++, "%" + term + "%");
+                ps.setString(paramIndex++, "%" + term + "%");
+                ps.setString(paramIndex++, "%" + term + "%");
+            }
+
+            int start = pageable.getPageNumber() * pageable.getPageSize() + 1;
+            int end = start + pageable.getPageSize() - 1;
+            ps.setInt(paramIndex++, start);
+            ps.setInt(paramIndex++, end);
+
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                PatientLabOrderViewModel order = new PatientLabOrderViewModel();
+                order.setId(rs.getInt("patientLabsID"));
+                order.setAdmissionID(rs.getInt("admissionID"));
+                order.setSupplyID(rs.getInt("supplyID"));
+                order.setSupplyName(rs.getString("supplyName"));
+                order.setSupplyType(rs.getString("supplyType"));
+                order.setLabOrderedOn(rs.getTimestamp("labOrderedOn").toInstant());
+                order.setLabResultStatus(rs.getString("labResultStatus"));
+                patientLabOrders.add(order);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return new PageImpl<>(patientLabOrders, pageable, totalRecords);
+    }
     public PatientLabOrder addPatientLabOrder(PatientLabOrder patientLabOrder) {
         return patientLabOrderRepository.save(patientLabOrder);
     }
 
     public PatientLabOrder updatePatientLabOrder(Integer id, PatientLabOrder patientLabOrder) {
-        patientLabOrder.setAdmissionID(id);
+        patientLabOrder.setId(id);
         return patientLabOrderRepository.save(patientLabOrder);
-    }
-
-    /*
-     * Inner class to build the Specification for the PatientLabOrder entity
-     * This class is used to build the Predicate for the query
-     * The Predicate is used to filter the results based on the query
-     * The query can be a name, triage, status, bed location code, admit on, or out on
-     * The query is split into terms, and each term is used to build a Predicate
-     * The Predicates are then ANDed together to form the final Predicate
-     * The final Predicate is used to filter the results
-     */
-    private class PatientLabOrderSpecification {
-        public static Specification<PatientLabOrder> buildSpecification(String query, Integer admissionID) {
-            return (root, criteriaQuery, criteriaBuilder) -> {
-                if (query == null || query.isEmpty()) {
-                    return null;
-                }
-                Predicate finalPredicate = null;
-
-                // Enforce all results have the same AdmissionID
-                if (admissionID != null && !admissionID.equals(0)) {
-                    Predicate admissionIDPredicate = criteriaBuilder.equal(root.get("admissionID"), admissionID);
-                    finalPredicate = admissionIDPredicate;
-                }
-
-                String[] terms = query.split("\\s+"); // Split query into terms
-                for (String term : terms) {
-                    Predicate predicate = null;
-                    Predicate namePredicate = criteriaBuilder.like(root.get("name"), "%" + term + "%");
-                    Join<PatientLabOrder, Supply> supplyJoin = root.join("supplyID", JoinType.INNER);
-                    Predicate supplyNamePredicate = criteriaBuilder.like(supplyJoin.get("supplyName"), "%" + term + "%");
-                    Predicate supplyTypePredicate = criteriaBuilder.like(supplyJoin.get("supplyType"), "test:%");
-                    Predicate labResultStatusPredicate = criteriaBuilder.like(root.get("labResultStatus"), "%" + term + "%");
-                    predicate = criteriaBuilder.or(namePredicate, supplyNamePredicate, supplyTypePredicate, labResultStatusPredicate);
-
-                    if (finalPredicate == null) { // at first, finalPredicate is null, so we assign the first predicate
-                        finalPredicate = predicate;
-                    } else { // after the first predicate, we AND the predicates together
-                        finalPredicate = criteriaBuilder.and(finalPredicate, predicate);
-                    }
-                }
-                return finalPredicate;
-            };
-        }
     }
 
 }

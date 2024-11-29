@@ -52,6 +52,14 @@ public class PatientLabOrderController {
         return ResponseEntity.ok(patientLabOrderService.getPatientLabOrderByID(id).get());
     }
 
+    @RequestMapping(value = "/search/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Page<PatientLabOrderViewModel> searchPatientLabOrders(@PathVariable int id, @RequestParam String query, @RequestParam int page, @RequestParam int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<PatientLabOrderViewModel> patientLabOrders = patientLabOrderService.searchPatientLabOrders(query, id, pageable);
+        log.info(patientLabOrders.toString());
+        return patientLabOrders;
+    }
+
     @PostMapping(value = "/order", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> addPatientLabOrder(@RequestBody PatientLabOrder patientLabOrder) {
         List errors = validatePatientLabOrder(patientLabOrder);
