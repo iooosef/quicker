@@ -30,4 +30,7 @@ public class PatientBilling {
     @Column(name = "billingItemQty", nullable = false)
     private Integer billingItemQty;
 
+    @Column(name = "billingItemDiscount", nullable = false, precision = 19, scale = 4)
+    private BigDecimal billingItemDiscount;
+
 }
