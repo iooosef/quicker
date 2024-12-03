@@ -40,18 +40,18 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http
-            .authorizeRequests()
-            .antMatchers("/login", "/register", "/auth/**", "/me", "/user/roles").permitAll()
-            .antMatchers("/admin/**").hasRole("ADMIN")
-            .antMatchers("/staff/**").hasAnyRole("STAFF", "ADMIN")
-            .antMatchers("/inventory/**").hasAnyRole("INVENTORYSTAFF", "ADMIN")
-            .anyRequest().authenticated()
-            .and()
-            .formLogin().permitAll()
-            .and()
-            .logout()
-            .logoutRequestMatcher(new AntPathRequestMatcher("/logout")).permitAll()
-            .and()
-            .csrf().disable();
+                .cors().and() // Ensure that CORS is enabled here
+                .csrf().disable()
+                .authorizeRequests()
+                .antMatchers("/", "/index.html", "/static/**", "/login", "/register", "/auth/**", "/me", "/user/roles").permitAll() // Allow SPA and static resources
+                .antMatchers("/admin/**").hasRole("ADMIN")
+                .antMatchers("/staff/**").hasAnyRole("STAFF", "ADMIN")
+                .antMatchers("/inventory/**").hasAnyRole("INVENTORYSTAFF", "ADMIN")
+                .anyRequest().authenticated() // Protect other endpoints
+                .and()
+                .formLogin().permitAll() // Enable default login page
+                .and()
+                .logout()
+                .logoutRequestMatcher(new AntPathRequestMatcher("/logout")).permitAll();
     }
 }
