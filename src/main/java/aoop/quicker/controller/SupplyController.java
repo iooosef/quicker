@@ -62,7 +62,7 @@ public class SupplyController {
         if (!invalidModelResponse.isEmpty()) {
             errors.addAll(invalidModelResponse);
         }
-        boolean exists = supplyService.supplyExists(model.getSupplyName());
+        boolean exists = supplyService.supplyExists(model.getSupplyName(), model.getSupplyType());
         if (exists) {
             HashMap<String, String> error = new HashMap<>();
             error.put("type", "validation_error");
