@@ -1,5 +1,5 @@
 INSERT INTO Supplies (supplyName, supplyType, supplyQty, supplyPrice)
-VALUES 
+VALUES
 -- Tests
 ('Blood Chemistry', 'test:Laboratory', -1, 50.0000),
 ('Complete Blood Count (CBC)', 'test:Laboratory', -1, 30.0000),
