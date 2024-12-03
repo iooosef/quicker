@@ -1,9 +1,14 @@
 package aoop.quicker.controller;
 
+import aoop.quicker.model.PatientBilling;
 import aoop.quicker.model.PatientTreatmentOrder;
+import aoop.quicker.model.Supply;
 import aoop.quicker.model.viewmodel.PatientTreatmentOrderViewModel;
+import aoop.quicker.repository.PatientTreatmentOrderRepository;
 import aoop.quicker.repository.SupplyRepository;
+import aoop.quicker.service.PatientBillingService;
 import aoop.quicker.service.PatientTreatmentOrderService;
+import aoop.quicker.service.SupplyService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -17,17 +22,20 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/patient-treatment-orders")
 public class PatientTreatmentOrderController {
     private final Logger log = LoggerFactory.getLogger(PatientTreatmentOrderController.class);
     private final PatientTreatmentOrderService patientTreatmentOrderService;
-    private final SupplyRepository supplyRepository;
+    private final SupplyService supplyService;
+    private final PatientBillingService patientBillingService;
 
-    public PatientTreatmentOrderController(PatientTreatmentOrderService patientTreatmentOrderService, SupplyRepository supplyRepository) {
+    public PatientTreatmentOrderController(PatientTreatmentOrderService patientTreatmentOrderService, SupplyService supplyService, PatientBillingService patientBillingService) {
         this.patientTreatmentOrderService = patientTreatmentOrderService;
-        this.supplyRepository = supplyRepository;
+        this.supplyService = supplyService;
+        this.patientBillingService = patientBillingService;
     }
 
     @RequestMapping(value = "/all/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -68,7 +76,25 @@ public class PatientTreatmentOrderController {
         }
         Instant now = Instant.now();
         patientTreatmentOrder.setTreatmentOrderedOn(now);
-        return ResponseEntity.ok(patientTreatmentOrderService.addPatientTreatmentOrder(patientTreatmentOrder));
+        PatientTreatmentOrder response = patientTreatmentOrderService.addPatientTreatmentOrder(patientTreatmentOrder);
+
+        // Add Billing
+        Supply supply = supplyService.getSupplyById(patientTreatmentOrder.getSupplyID()).get();
+        Optional<PatientBilling> existingBilling = patientBillingService.getPatientBillingByAdmissionIDAndDetails(patientTreatmentOrder.getAdmissionID(), supply.getSupplyName());
+        PatientBilling billing = new PatientBilling();
+        billing.setAdmissionID(patientTreatmentOrder.getAdmissionID());
+        billing.setBillingItemDetails(supply.getSupplyName());
+        billing.setBillingItemPrice(supply.getSupplyPrice());
+
+        if (existingBilling.isPresent()) {
+            billing.setBillingItemQty(existingBilling.get().getBillingItemQty() + 1);
+            patientBillingService.updatePatientBilling(existingBilling.get().getId(), billing);
+        } else {
+            billing.setBillingItemQty(1);
+            patientBillingService.savePatientBilling(billing);
+        }
+
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping(value = "/order/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
