@@ -34,6 +34,10 @@ public class SupplyService {
         return supplyRepository.findById(id);
     }
 
+    public Optional<Supply> getSupplyByNameAndType(String name, String type) {
+        return supplyRepository.findSupplyBySupplyNameAndSupplyType(name, type);
+    }
+
     // For adding a new supply
     public Supply addSupply(Supply supply) {
         return supplyRepository.save(supply); // Save supply to the database
@@ -46,8 +50,8 @@ public class SupplyService {
     }
 
     // Supply with the given name exists
-    public boolean supplyExists(String supplyName) {
-        return supplyRepository.existsBySupplyName(supplyName);
+    public boolean supplyExists(String supplyName, String supplyTape) {
+        return supplyRepository.existsSupplyBySupplyNameAndSupplyType(supplyName, supplyTape);
     }
 
     /*
