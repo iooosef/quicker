@@ -1,7 +1,11 @@
 package aoop.quicker.controller;
 
 import aoop.quicker.model.PatientAdmission;
+import aoop.quicker.model.PatientBilling;
+import aoop.quicker.model.Supply;
 import aoop.quicker.service.PatientAdmissionService;
+import aoop.quicker.service.PatientBillingService;
+import aoop.quicker.service.SupplyService;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -23,10 +27,14 @@ import java.util.Optional;
 public class PatientAdmissionController {
     private final Logger log = LoggerFactory.getLogger(PatientAdmissionController.class);
     private final PatientAdmissionService patientAdmissionService;
+    private final PatientBillingService patientBillingService;
+    private final SupplyService supplyService;
     private final Duration DUPLICATE_CHECK_TRERESHOLD = Duration.ofMinutes(90);
 
-    public PatientAdmissionController(PatientAdmissionService patientAdmissionService) {
+    public PatientAdmissionController(PatientAdmissionService patientAdmissionService, PatientBillingService patientBillingService, SupplyService supplyService) {
         this.patientAdmissionService = patientAdmissionService;
+        this.patientBillingService = patientBillingService;
+        this.supplyService = supplyService;
     }
 
     @RequestMapping(value="/all", produces= MediaType.APPLICATION_JSON_VALUE)
@@ -68,6 +76,9 @@ public class PatientAdmissionController {
         Instant currentInstant = Instant.now();
         model.setPatientAdmitOn(currentInstant);
         PatientAdmission patient = patientAdmissionService.addPatientAdmission(model);
+
+        addBaseERFeeToBilling(patient.getId());
+
         return ResponseEntity.ok(patient);
     }
 
@@ -87,6 +98,9 @@ public class PatientAdmissionController {
         Instant currentInstant = Instant.now();
         model.setPatientAdmitOn(currentInstant);
         PatientAdmission patient = patientAdmissionService.addPatientAdmission(model);
+
+        addBaseERFeeToBilling(patient.getId());
+
         return ResponseEntity.ok(patient);
     }
 
@@ -133,6 +147,15 @@ public class PatientAdmissionController {
         ogPatient.get().setPatientID(model.getPatientID());
         PatientAdmission updatedPatient = patientAdmissionService.updatePatientAdmission(id, ogPatient.get());
         return ResponseEntity.ok(updatedPatient);
+    }
+
+    private void addBaseERFeeToBilling(int admissionID) {
+        Supply baseERFee = supplyService.getSupplyByNameAndType("Emergency Room Fee", "base_fee").get();
+        PatientBilling patientBilling = new PatientBilling();
+        patientBilling.setAdmissionID(admissionID);
+        patientBilling.setBillingItemDetails(baseERFee.getSupplyName());
+        patientBilling.setBillingItemPrice(baseERFee.getSupplyPrice());
+        patientBillingService.savePatientBilling(patientBilling);
     }
 
     private List validatePatientAdmission(PatientAdmission model, boolean isAdd) {
