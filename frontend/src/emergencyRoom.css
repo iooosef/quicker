@@ -1,0 +1,413 @@
+body {
+    background-color: #f4f6f9 !important;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+}
+
+
+
+
+/* Emergency Room Container */
+.emergency-room-container {
+    display: flex;
+    height: 100vh;
+    background-color: #f4f6f9;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 250px;
+    background-color: #ffffff;
+    border-right: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.menu {
+    list-style: none;
+    padding: 0;
+    width: 100%;
+}
+
+.menu-item {
+    padding: 12px 15px;
+    cursor: pointer;
+    text-align: left;
+    font-weight: bold;
+    color: #333;
+    border-radius: 5px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.menu-item.active,
+.menu-item:hover {
+    background-color: #007bff;
+    color: #fff;
+}
+
+.menu-item svg {
+    font-size: 16px;
+}
+
+
+
+
+/* Header and Logo */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+/* emergencyRoom.css */
+.header h1 {
+    font-size: 2rem;  /* Adjust this value to change the font size */
+    color: #333;  /* You can also adjust color if needed */
+  }
+  
+.logo {
+    max-width: 100%;
+    height: auto;
+}
+
+
+
+
+/* Main Content */
+.emergency-room-content {
+    flex: 1;
+    padding: 20px 30px;
+    overflow-y: auto;
+    background-color: #ffffff;
+    border-radius: 10px;
+    margin: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+
+
+
+/* Tabs */
+.tabs {
+    display: flex;
+    border-bottom: 2px solid #ddd;
+    margin-bottom: 20px;
+}
+
+.tab {
+    padding: 10px 20px;
+    cursor: pointer;
+    font-weight: bold;
+    color: #333;
+    transition: color 0.3s ease;
+}
+
+.tab.active {
+    border-bottom: 2px solid #007bff;
+    color: #007bff;
+}
+
+
+
+
+/* Controls Section */
+.controls {
+    display: flex;
+    justify-content: space-between;
+    margin: 20px 0;
+}
+
+.search-bar {
+    padding: 10px;
+    width: 300px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+
+
+
+/* Buttons */
+.button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 14px;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+.button:hover {
+    background-color: #0056b3;
+}
+.update-button {
+    background-color: #007bff; /* Blue background */
+    color: white;              /* White text */
+    border: none;              /* No border */
+    padding: 10px 20px;        /* Padding for size */
+    font-size: 16px;           /* Font size */
+    cursor: pointer;           /* Pointer cursor on hover */
+    border-radius: 5px;        /* Rounded corners */
+    transition: background-color 0.3s ease; /* Smooth hover transition */
+  }
+  
+.update-button:hover {
+    background-color: #66b3ff; /* Light blue on hover */
+  }
+.smaller-update-button {
+    background-color: #007bff; /* Blue background */
+    color: white;              /* White text */
+    border: none;              /* No border */
+    padding: 5px 10px;         /* Smaller padding */
+    font-size: 14px;           /* Smaller font size */
+    margin: 5px;
+    cursor: pointer;           /* Pointer cursor on hover */
+    border-radius: 3px;        /* Slightly less rounded corners */
+    transition: background-color 0.3s ease; /* Smooth hover transition */
+}
+  
+.smaller-update-button:hover {
+    background-color: #66b3ff; /* Light blue on hover */
+}
+  
+
+/* Table Styling */
+.patients-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background-color: white;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.patients-table th,
+.patients-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.patients-table th {
+    background-color: #f8f9fa;
+    color: #333;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 12px;
+}
+
+.patients-table td {
+    font-size: 14px;
+    color: #555;
+}
+
+
+
+/* Triage Colors */
+.triage-c {
+    background-color: #ff5e57;
+    color: white;
+    text-align: center;
+    font-weight: bold;
+    border-radius: 3px;
+    padding: 5px;
+}
+
+.triage-h {
+    background-color: #ffa502;
+    color: white;
+    text-align: center;
+    font-weight: bold;
+    border-radius: 3px;
+    padding: 5px;
+}
+
+.triage-m {
+    background-color: #ffdd59;
+    color: #333;
+    text-align: center;
+    font-weight: bold;
+    border-radius: 3px;
+    padding: 5px;
+}
+
+.triage-l {
+    background-color: #2ed573;
+    color: white;
+    text-align: center;
+    font-weight: bold;
+    border-radius: 3px;
+    padding: 5px;
+}
+
+
+
+/* Modal Popup */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 400px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.modal label {
+    display: block;
+    margin: 10px 0;
+}
+
+.modal input,
+.modal select {
+    width: 100%;
+    padding: 8px;
+    margin: 5px 0;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+
+
+/* Pagination */
+.pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.pagination button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    cursor: pointer;
+    margin: 0 5px;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.pagination button:hover {
+    background-color: #0056b3;
+}
+
+/* Modal Overlay */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  
+  /* Modal Container */
+  .modal {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    max-width: 500px;
+    width: 100%;
+    max-height: 90vh; /* Limit the modal height to 90% of the viewport height */
+    overflow-y: auto; /* Add vertical scroll when content overflows */
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  /* Modal Header */
+  .modal h2 {
+    text-align: center;
+    margin-bottom: 10px;
+  }
+  
+  /* Modal Label */
+  .modal label {
+    display: flex;
+    flex-direction: column;
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+  
+  /* Inputs and Selects */
+  .modal input[type="text"],
+  .modal input[type="date"],
+  .modal select {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
+  
+  .modal input[type="text"]:focus,
+  .modal input[type="date"]:focus,
+  .modal select:focus {
+    outline: none;
+    border-color: #007bff;
+  }
+  
+  /* Form Actions */
+  .modal .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+  
+  /* Buttons */
+  .modal button {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  
+  .modal button:hover {
+    opacity: 0.9;
+  }
+  
+  .modal button:first-child {
+    background-color: #ccc;
+  }
+  
+  .modal button:last-child {
+    background-color: #007bff;
+    color: white;
+  }
+  
+  
