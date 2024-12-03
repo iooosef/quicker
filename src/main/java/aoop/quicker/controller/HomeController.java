@@ -4,6 +4,8 @@ import aoop.quicker.model.User;
 import aoop.quicker.service.CustomUserDetailsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -11,7 +13,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-@RestController
+@Controller
+@CrossOrigin(origins = "http://localhost:5173")
 public class HomeController {
     private final CustomUserDetailsService userDetailsService;
 
@@ -19,9 +22,9 @@ public class HomeController {
         this.userDetailsService = userDetailsService;
     }
 
-    @GetMapping
+    @GetMapping({"/", "/login", "/register"})
     public String home() {
-        return "Welcome to Quicker!";
+        return "forward:/index.html";
     }
 
     @GetMapping("/me")
