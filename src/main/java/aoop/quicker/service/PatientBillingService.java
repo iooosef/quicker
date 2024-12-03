@@ -1,6 +1,5 @@
 package aoop.quicker.service;
 
-import aoop.quicker.model.Patient;
 import aoop.quicker.model.PatientBilling;
 import aoop.quicker.repository.PatientBillingRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,7 +29,7 @@ public class PatientBillingService {
     }
 
     public Page<PatientBilling> getAllPatientBillingByAdmissionID(Integer id, Pageable pageable) {
-        return patientBillingRepository.finAllByAdmissionID(id, pageable);
+        return patientBillingRepository.findAllByAdmissionID(id, pageable);
     }
 
     public List<PatientBilling> getAllPatientBillingByAdmissionID(Integer id) {
