@@ -22,6 +22,11 @@ public class HomeController {
         this.userDetailsService = userDetailsService;
     }
 
+    @GetMapping("/{path:[^\\.]*}")
+    public String forward() {
+        return "forward:/index.html";
+    }
+
     @GetMapping({"/", "/login", "/register"})
     public String home() {
         return "forward:/index.html";

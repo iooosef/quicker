@@ -43,15 +43,19 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .cors().and() // Ensure that CORS is enabled here
                 .csrf().disable()
                 .authorizeRequests()
-                .antMatchers("/", "/index.html", "/static/**", "/login", "/register", "/auth/**", "/me", "/user/roles").permitAll() // Allow SPA and static resources
+                .antMatchers("/", "/index.html", "/static/**", "/login", "/register", "/auth/**", "/me", "/user/roles", "/config.json").permitAll() // Allow SPA and static resources
                 .antMatchers("/admin/**").hasRole("ADMIN")
                 .antMatchers("/staff/**").hasAnyRole("STAFF", "ADMIN")
                 .antMatchers("/inventory/**").hasAnyRole("INVENTORYSTAFF", "ADMIN")
                 .anyRequest().authenticated() // Protect other endpoints
                 .and()
-                .formLogin().permitAll() // Enable default login page
+                .formLogin()
+                .loginPage("/")
+                .permitAll() // Enable default login page
                 .and()
                 .logout()
-                .logoutRequestMatcher(new AntPathRequestMatcher("/logout")).permitAll();
+                .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
+                .logoutSuccessUrl("/")
+                .permitAll();
     }
 }

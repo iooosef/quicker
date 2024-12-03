@@ -10,17 +10,17 @@ html, body {
 
 /* Background styling */
 body {
-  background-image: url('./assets/hospital.jpg'); /* Path to the hospital image */
-  background-size: cover; /* Cover the entire screen */
-  background-position: center; /* Center the image */
-  background-attachment: fixed; /* Keep the background fixed */
-  background-repeat: no-repeat; /* Prevent the image from repeating */
-  height: 100vh; /* Full viewport height */
+  background-image: url('./assets/hospital.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  height: 100vh;
   position: relative;
 }
 
 /* Menu Container */
-.menu-container {
+/* .menu-container {
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -30,24 +30,24 @@ body {
   position: relative;
   padding: 20px;
   z-index: 1;
-}
+} */
 
 /* Logo Styling */
-.menu-logo {
+/* .menu-logo {
   width: 200px;
   margin-bottom: 40px;
-}
+} */
 
 /* Menu Grid */
-.menu-grid {
+/* .menu-grid {
   display: flex;
   gap: 30px;
-  flex-wrap: wrap; /* Ensures responsiveness for smaller screens */
+  flex-wrap: wrap;
   justify-content: center;
-}
+} */
 
 /* Menu Card Styling */
-.menu-card {
+/* .menu-card {
   width: 550px;
   height: 800px;
   background-size: cover;
@@ -57,35 +57,35 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: white; /* Ensures text is white */
+  color: white; 
   cursor: pointer;
   text-align: center;
   position: relative;
   transition: transform 0.2s;
-}
+} */
 
-.menu-card:hover {
+/* .menu-card:hover {
   transform: translateY(-5px);
-}
+} */
 
 /* Menu Icons */
-.menu-icon {
+/* .menu-icon {
   width: 80px;
   height: auto;
   margin-bottom: 15px;
-}
+} */
 
 /* Menu Card Text */
-.menu-card h3 {
+/* .menu-card h3 {
   margin-top: 10px;
   font-size: 24px;
   font-family: 'Arial', sans-serif;
   text-transform: uppercase;
-  color: white; /* White text for menu titles */
-}
+  color: white; 
+} */
 
 /* Responsive Design */
-@media (max-width: 768px) {
+/* @media (max-width: 768px) {
   .menu-card {
     width: 100%;
     height: auto;
@@ -97,4 +97,9 @@ body {
   .menu-card h3 {
     font-size: 18px;
   }
-}
+} */
+
+input:-webkit-autofill,
+  input:-webkit-autofill:focus {
+    transition: background-color 0s 600000s, color 0s 600000s !important;
+  }
