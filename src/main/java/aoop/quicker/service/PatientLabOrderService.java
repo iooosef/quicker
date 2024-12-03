@@ -1,20 +1,15 @@
 package aoop.quicker.service;
 
 import aoop.quicker.model.PatientLabOrder;
-import aoop.quicker.model.Supply;
 import aoop.quicker.model.viewmodel.PatientLabOrderViewModel;
 import aoop.quicker.repository.PatientLabOrderRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import javax.persistence.EntityManager;
-import javax.persistence.criteria.Join;
-import javax.persistence.criteria.JoinType;
-import javax.persistence.criteria.Predicate;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -166,6 +161,7 @@ public class PatientLabOrderService {
 
         return new PageImpl<>(patientLabOrders, pageable, totalRecords);
     }
+
     public PatientLabOrder addPatientLabOrder(PatientLabOrder patientLabOrder) {
         return patientLabOrderRepository.save(patientLabOrder);
     }

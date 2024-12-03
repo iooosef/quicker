@@ -1,9 +1,13 @@
 package aoop.quicker.controller;
 
+import aoop.quicker.model.PatientBilling;
 import aoop.quicker.model.PatientLabOrder;
+import aoop.quicker.model.Supply;
 import aoop.quicker.model.viewmodel.PatientLabOrderViewModel;
 import aoop.quicker.repository.SupplyRepository;
+import aoop.quicker.service.PatientBillingService;
 import aoop.quicker.service.PatientLabOrderService;
+import aoop.quicker.service.SupplyService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -17,17 +21,20 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/patient-lab-orders")
 public class PatientLabOrderController {
     private final Logger log = LoggerFactory.getLogger(PatientLabOrderController.class);
     private final PatientLabOrderService patientLabOrderService;
-    private final SupplyRepository supplyRepository;
+    private final PatientBillingService patientBillingService;
+    private final SupplyService supplyService;
 
-    public PatientLabOrderController(PatientLabOrderService patientLabOrderService, SupplyRepository supplyRepository) {
+    public PatientLabOrderController(PatientLabOrderService patientLabOrderService, PatientBillingService patientBillingService, SupplyService supplyService) {
         this.patientLabOrderService = patientLabOrderService;
-        this.supplyRepository = supplyRepository;
+        this.patientBillingService = patientBillingService;
+        this.supplyService = supplyService;
     }
 
     @RequestMapping(value = "/all/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -69,8 +76,25 @@ public class PatientLabOrderController {
         Instant now = Instant.now();
         patientLabOrder.setLabOrderedOn(now);
         patientLabOrder.setLabResultStatus("Pending");
-        patientLabOrderService.addPatientLabOrder(patientLabOrder);
-        return ResponseEntity.ok(patientLabOrder);
+        PatientLabOrder response = patientLabOrderService.addPatientLabOrder(patientLabOrder);
+
+        // Add billing
+        Supply supply = supplyService.getSupplyById(patientLabOrder.getSupplyID()).get();
+        Optional<PatientBilling> existingBilling = patientBillingService.getPatientBillingByAdmissionIDAndDetails(patientLabOrder.getAdmissionID(), supply.getSupplyName());
+        PatientBilling billing = new PatientBilling();
+        billing.setAdmissionID(patientLabOrder.getAdmissionID());
+        billing.setBillingItemDetails(supply.getSupplyName());
+        billing.setBillingItemPrice(supply.getSupplyPrice());
+
+        if (existingBilling.isPresent()) {
+            billing.setBillingItemQty(existingBilling.get().getBillingItemQty() + 1);
+            patientBillingService.updatePatientBilling(existingBilling.get().getId(), billing);
+        } else {
+            billing.setBillingItemQty(1);
+            patientBillingService.savePatientBilling(billing);
+        }
+
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping(value = "/order/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -99,7 +123,8 @@ public class PatientLabOrderController {
             error.put("target", "supplyID");
             errors.add(error);
         }
-        boolean supplyExists = supplyRepository.findById(model.getSupplyID()).isPresent();
+
+        boolean supplyExists = supplyService.getSupplyById(model.getSupplyID()).isPresent();
         if (!supplyExists) {
             HashMap<String, String> error = new HashMap<>();
             error.put("type", "validation_error");
