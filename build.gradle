@@ -2,6 +2,17 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '2.7.10'
 	id 'io.spring.dependency-management' version '1.0.15.RELEASE'
+	id 'com.github.node-gradle.node' version '7.1.0'
+}
+
+node {
+	version = '19.9.0'
+	npmVersion = '9.6.3'
+	download = true
+
+	workDir = file("${project.projectDir}/.gradle/nodejs")
+	npmWorkDir = file("${project.projectDir}/.gradle/npm")
+	nodeProjectDir = file("${project.projectDir}/frontend")
 }
 
 group = 'aoop'
@@ -41,4 +52,27 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+task buildReact(type: NpmTask) {
+	args = ['install']
+}
+
+task buildReactProduction(type: NpmTask) {
+	dependsOn buildReact
+	args = ['run', 'build']
+}
+
+task copyReactBuild(type: Copy) {
+	dependsOn buildReactProduction
+	from('frontend/build')
+	into('src/main/resources/static')
+}
+
+tasks.named('bootRun') {
+	dependsOn copyReactBuild
+}
+
+tasks.named('processResources') {
+	dependsOn copyReactBuild
 }
