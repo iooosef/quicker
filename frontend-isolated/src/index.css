@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  color-scheme: light;
+  height: 100%; /* Full height for both html and body */
+  margin: 0; /* Remove default margin */
+  padding: 0; /* Remove default padding */
+}
+
+/* Background styling */
+body {
+  background-image: url('./assets/hospital.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  height: 100vh;
+  position: relative;
+}
+
+/* Menu Container */
+/* .menu-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: white;
+  position: relative;
+  padding: 20px;
+  z-index: 1;
+} */
+
+/* Logo Styling */
+/* .menu-logo {
+  width: 200px;
+  margin-bottom: 40px;
+} */
+
+/* Menu Grid */
+/* .menu-grid {
+  display: flex;
+  gap: 30px;
+  flex-wrap: wrap;
+  justify-content: center;
+} */
+
+/* Menu Card Styling */
+/* .menu-card {
+  width: 550px;
+  height: 800px;
+  background-size: cover;
+  background-position: center;
+  border-radius: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white; 
+  cursor: pointer;
+  text-align: center;
+  position: relative;
+  transition: transform 0.2s;
+} */
+
+/* .menu-card:hover {
+  transform: translateY(-5px);
+} */
+
+/* Menu Icons */
+/* .menu-icon {
+  width: 80px;
+  height: auto;
+  margin-bottom: 15px;
+} */
+
+/* Menu Card Text */
+/* .menu-card h3 {
+  margin-top: 10px;
+  font-size: 24px;
+  font-family: 'Arial', sans-serif;
+  text-transform: uppercase;
+  color: white; 
+} */
+
+/* Responsive Design */
+/* @media (max-width: 768px) {
+  .menu-card {
+    width: 100%;
+    height: auto;
+    padding: 20px;
+  }
+  .menu-icon {
+    width: 60px;
+  }
+  .menu-card h3 {
+    font-size: 18px;
+  }
+} */
+
+input:-webkit-autofill,
+  input:-webkit-autofill:focus {
+    transition: background-color 0s 600000s, color 0s 600000s !important;
+  }

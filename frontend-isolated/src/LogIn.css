@@ -1,0 +1,79 @@
+/* Style for the LogIn form container */
+.LogIn {
+    background-color: white;  /* White background inside the form */
+    border: 1px solid rgba(88, 88, 88, 0.397);  /* Border for the form */
+    border-radius: 10px; /* Rounded corners */
+    box-shadow: 5px 5px 5px rgba(88, 88, 88, 0.459); /* Shadow effect */
+    padding: 20px;   /* Space inside the form */
+    margin: auto;
+    text-align: center;
+    max-width: 500px;
+    height: auto; 
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative; 
+    z-index: 2;
+  }
+  
+  /* Style for the labels */
+  .LogIn label {
+    margin: 10px 0 5px;
+    font-family: 'Arial', sans-serif;
+    font-size: 14px;
+    text-align: left;
+    width: 100%;
+    max-width: 400px;
+  }
+  
+  /* Style for the inputs */
+  .LogIn input {
+    width: 100%;
+    max-width: 400px; /* input width */
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-bottom: 15px; /* Space between fields */
+    font-size: 14px;
+  }
+  
+  /* Spacing between the logo and the form fields */
+  .LogIn img {
+    width: 300px; /* Logo size */
+    height: auto; /* Aspect ratio */
+    margin-bottom: 20px;
+  }
+  
+  .LogIn button {
+    background-color: black;  /* Background color */
+    color: white;             /* Text color */
+    padding: 10px 20px;       /* Padding for the button */
+    border: none;             /* Remove the border */
+    border-radius: 25px;      /* Round edges */
+    cursor: pointer;         /* Change cursor to pointer on hover */
+    font-size: 16px;          /* Font size */
+    transition: background-color 0.3s; /* hover effect */
+  }
+  
+  .LogIn button:hover {
+    background-color: #333;  /* Darker black when hovered */
+  }
+  
+  /* Style for the register link */
+  .LogIn .registerLink {
+    cursor: pointer;              /* Pointer cursor */
+    color: black;                  /* Text color */
+    text-decoration: underline;   /* Underline */
+    font-family: 'Arial', sans-serif;
+    font-size: 14px;              /* Font size for the link */
+    display: inline-block;        /* Ensure proper spacing and alignment */
+    margin-top: 10px;             /* Space between the login button and the register link */
+  }
+  
+  /* Hover effect for the register link */
+  .LogIn .registerLink:hover {
+    color: black;             
+    text-decoration: none;        /* Remove underline on hover */
+  }
+  

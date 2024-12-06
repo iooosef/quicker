@@ -1,0 +1,330 @@
+/* General Reset and Basic Styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f9f9f9;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+h2 {
+    font-size: 2rem;  /* Adjust this value to change the font size */
+    color: #333;  /* You can also adjust color if needed */
+  }
+
+/* Main Container */
+.main-container {
+    display: flex;
+    height: 100vh; /* Full height */
+}
+
+/* Sidebar Styles */
+.sidebar {
+    width: 250px;
+    background-color: #ffffff;
+    border-right: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+.sidebar h1 {
+    color: #ff4d4d;
+    font-size: 24px;
+    margin-bottom: 30px;
+}
+
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+}
+
+.sidebar ul li {
+    margin-bottom: 10px;
+}
+
+.sidebar ul li a {
+    text-decoration: none;
+    color: #000;
+    display: block;
+    padding: 5px 15px;
+    border-radius: 5px;
+}
+
+.sidebar ul li a.active {
+    background-color: #007bff;
+    color: #fff;
+}
+
+.sidebar ul li a:hover {
+    background-color: #e9ecef;
+}
+
+/* Content Area */
+.content {
+    flex: 1;
+    padding: 20px 30px;
+    overflow-y: auto;
+    background-color: #ffffff;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+.search-bar {
+    padding: 10px;
+    width: 300px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    float: right;
+}
+
+
+/* Table Styling */
+.patient-table,
+.receipt-table {
+    
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        background-color: white;
+        border-radius: 5px;
+        overflow: hidden;
+    
+}
+
+.patient-table th,
+.receipt-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.patient-table th,
+.receipt-table th {
+    background-color: #f8f9fa;
+    color: #333;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 12px;
+}
+
+/* Actions */
+.actions button {
+    margin-right: 3px;
+    padding: 5px 10px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.actions button.print {
+    background-color: #007bff;
+}
+
+.update-button {
+    background-color: #007bff; /* Blue background */
+    color: white;              /* White text */
+    border: none;              /* No border */
+    padding: 10px 20px;        /* Padding for size */
+    font-size: 16px;           /* Font size */
+    cursor: pointer;           /* Pointer cursor on hover */
+    border-radius: 5px;        /* Rounded corners */
+    transition: background-color 0.3s ease; /* Smooth hover transition */
+  }
+  
+.update-button:hover {
+    background-color: #66b3ff; /* Light blue on hover */
+  }
+/* Modal Styles */
+/* Modal Content */
+.modal-content {
+    background-color: white;
+    padding: 30px;
+    border-radius: 5px;
+    width: 500px; /* Adjust width as needed */
+    max-width: 100%; /* Ensure modal is responsive */
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Rest of your existing modal styling */
+.modal-content form {
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-content form label {
+    margin-bottom: 8px;
+   
+}
+
+.modal-content form input,
+.modal-content form select {
+    padding: 8px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+
+.modal-content form button {
+    padding: 10px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.modal-content form button:hover {
+    background-color: #0056b3;
+}
+
+/* Receipt Modal */
+.receipt-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.receipt-modal .modal-content {
+    width: 900px;
+    padding: 20px;
+    max-height: 90%;
+    overflow-y: auto;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.receipt-modal h2 {
+    margin-bottom: 20px;
+    font-size: 24px;
+    text-align: center;
+}
+
+.receipt-modal .close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 30px;
+    color: #333;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+}
+
+.receipt-modal .close:hover {
+    color: #ff4d4d;
+}
+
+.receipt-modal table {
+    width: 100%;
+    margin-top: 20px;
+    border-collapse: collapse;
+}
+
+.receipt-modal table th,
+.receipt-modal table td {
+    padding: 10px;
+    border: 1px solid #ddd;
+    text-align: center;
+}
+
+.receipt-modal table th {
+    background-color: #f5f5f5;
+}
+
+.receipt-modal .bill-summary {
+    margin-top: 20px;
+    font-size: 18px;
+    text-align: right;
+}
+
+.receipt-modal .bill-summary span {
+    font-size: 22px;
+    color: #007bff;
+}
+
+/* Close Button */
+.close-btn {
+    background-color: #f44336;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    cursor: pointer;
+    margin-top: 20px;
+    border-radius: 5px;
+}
+
+.close-btn:hover {
+    background-color: #d32f2f;
+}
+
+/* Pagination */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+}
+
+.pagination button {
+    background-color: #007bff;
+    color: white;
+    border: 1px solid #ddd;
+    padding: 10px 20px;
+    margin: 0 10px;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.pagination button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+.pagination button:hover:not(:disabled) {
+    background-color: #0056b3;
+}
+
+.pagination span {
+    font-size: 16px;
+    color: #555;
+    margin: 0 10px;
+}
+
+/* Patient List Container */
+.patient-list-container {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+.patient-table td {
+    padding: 12px;
+    text-align: left;
+    border: 1px solid #ddd;
+}
+

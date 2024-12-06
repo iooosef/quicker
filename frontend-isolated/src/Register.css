@@ -1,0 +1,120 @@
+.Register {
+    background-color: white;  /* White background inside the form */
+    border: 1px solid rgba(88, 88, 88, 0.397);  /* Border for the form */
+    border-radius: 10px; /* Rounded corners */
+    box-shadow: 5px 5px 5px rgba(88, 88, 88, 0.459); /* Shadow effect */
+    padding: 20px;   /* Space inside the form */
+    margin: auto;
+    text-align: center;
+    max-width: 500px;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative; 
+    z-index: 2; 
+  }
+  
+
+
+  
+  /* Style for the labels */
+  .Register label {
+    margin: 10px 0 5px;
+    font-family: 'Arial', sans-serif;
+    font-size: 14px;
+    text-align: left;
+    width: 100%;
+    max-width: 400px;
+  }
+  
+
+
+
+  /* Style for the inputs */
+  .Register input, .Register select {
+    width: 100%;
+    max-width: 400px; /* Fix for input width */
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+  }
+  
+
+
+
+  /* Add some spacing between the logo and the form fields */
+  .Register img {
+    width: 300px; /* Increase the width to make the logo bigger */
+    height: auto; /* Keep the aspect ratio intact */
+    margin-bottom: 20px;
+  }
+  
+
+
+
+  /* Style for the 'Select Role' dropdown */
+  .Register select {
+    width: 100%;                  /* Full width to align with other inputs */
+    max-width: 400px;             /* Consistent width with inputs */
+    padding: 12px;                /* Padding to match text inputs */
+    border: 1px solid #ccc;       /* Light gray border */
+    border-radius: 5px;           /* Rounded edges */
+    font-family: 'Arial', sans-serif; /* Same font as inputs */
+    font-size: 14px;              /* Font size  */
+    background-color: white;      /* White background */
+    box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.1); /* shadow */
+    appearance: none;             /* Remove default dropdown styling */
+    transition: border-color 0.3s, box-shadow 0.3s; /* Smooth transition effects */
+  }
+  
+  /* Add a custom arrow for the dropdown */
+  .Register select::after {
+    content: '\25BC';            
+    position: absolute;
+    right: 15px;
+    pointer-events: none;        
+  }
+  
+  /* Focus state for better accessibility */
+  .Register select:focus {
+    border-color: #007bff;        /* Blue border on focus */
+    outline: none;                /* Remove default outline */
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5); 
+  }
+  
+  /* Style for the submit button */
+  .Register button {
+    background-color: black;  /* background color */
+    color: white;             /* text color */
+    padding: 10px 20px;       /* Padding for the button */
+    border: none;             /* Remove the default border */
+    border-radius: 25px;      /* Round edges */
+    cursor: pointer;         /* Change cursor to pointer on hover */
+    font-size: 16px;          /* Font size */
+    transition: background-color 0.3s; /* hover effect */
+  }
+  
+  /* Button hover effect */
+  .Register button:hover {
+    background-color: #333;  /* Darker black when hovered */
+  }
+  
+  /* Style for the register link */
+  .Register .BacktoLogin {
+    cursor: pointer;              /* Pointer cursor for interactivity */
+    color: black;                  /* text color */
+    text-decoration: underline;   /* Underline to mimic a hyperlink */
+    font-family: 'Arial', sans-serif;
+    font-size: 14px;              /* Font size for the link */
+    display: inline-block;        /* Ensure proper spacing and alignment */
+    margin-top: 10px;             /* Space between the login button and the register link */
+  }
+  
+  /* Hover effect for the register link */
+  .Register .BacktoLogin:hover {
+    color: black;             
+    text-decoration: none;       
+  }
