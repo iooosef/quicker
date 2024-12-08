@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
 import LoginForm from './LoginForm';
 import RegisterForm from './RegisterForm';
@@ -10,18 +10,26 @@ import BillingPage from './Billing';
 import Logout from './auth/Logout';
 import Me from './auth/Me';
 
+import { ConfigProvider } from './util/ConfigContext';
 import { UserProvider } from './auth/UserContext'; 
 import ProtectedRoutes from './auth/ProtectedRoutes';
-import { ConfigProvider } from './util/ConfigContext';
+import { IStaticMethods } from 'flyonui/flyonui';
 
 
 function App() {
 
-  return (
-    <ConfigProvider>
-      <UserProvider>
+  
+  const location = useLocation();
+  useEffect(() => {
+      // Reinitialize FlyonUI components on page change
+      const loadFlyonui = async () => {
+        const flyonui = await import('flyonui/flyonui');
+        window.HSStaticMethods.autoInit();
+      };
+      loadFlyonui();
+    }, [location.pathname]); // Dependency on pathname
 
-        <Router>
+  return (
           <Routes>
             <Route path="/" element={<LoginForm />} />
             <Route path="/register" element={<RegisterForm />} />
@@ -38,10 +46,6 @@ function App() {
             <Route path="/billing" element={<BillingPage />} />
             <Route path="*" element={<div>404: Page Not Found</div>} />
           </Routes>
-        </Router>
-
-      </UserProvider>
-    </ConfigProvider>
   );
 }
 
