@@ -3,82 +3,189 @@ import './inventory.css';
 import quicker from "./assets/quicker.png";
 import { useNavigate } from 'react-router-dom';
 import { useConfig } from './util/ConfigContext';
+import secureFetch from './auth/SecureFetch';
 
-function AddItem({ addItemToInventory }) {
-  const [id, setId] = useState('');
-  const [supplyName, setSupplyName] = useState('');
-  const [supplyType, setSupplyType] = useState('');
-  const [supplyQty, setSupplyQty] = useState('');
-  const [supplyPrice, setSupplyPrice] = useState(''); // New state for price
-  const [error, setError] = useState('');
+function AddItem({ refreshInventory }) {
+  const { serverUrl } = useConfig();
+  const [loading, setLoading] = useState(false);
+  const [isSupplyQty, setIsSupplyQty] = useState('');
+  const [errors, setErrors] = useState({});
 
-  const handleSubmit = (e) => {
+  const validateModel = (supply) => {
+    const foundErrors = validateSupply(supply);
+    setErrors(foundErrors);
+    return Object.keys(foundErrors).length === 0;
+  };
+
+  const AddSupply = (e) => {
     e.preventDefault();
-    setError('');
 
-    if (!supplyName || !supplyType || !supplyQty || !supplyPrice || isNaN(supplyQty) || supplyQty <= 0 || isNaN(supplyPrice) || supplyPrice <= 0) {
-      setError('Please fill in all fields with valid data');
-      return;
-    }
+    if (!serverUrl) return;
 
-    const newItem = {
-      id: Date.now(),
-      itemName: supplyName,
-      brand: supplyType,
-      quantity: parseInt(supplyQty),
-      price: parseFloat(supplyPrice), // Include price
+    const formData = new FormData(e.target);
+    const supply = {
+      supplyName: formData.get("supplyName"),
+      supplyType: formData.get("supplyType"),
+      supplyQty: formData.get("supplyQty"),
+      supplyPrice: formData.get("supplyPrice"),
     };
 
-    addItemToInventory(newItem);
-    setSupplyName('');
-    setSupplyType('');
-    setSupplyQty('');
-    setSupplyPrice('');
-  };
+    console.log(supply)
+    if (!validateModel(supply)) return;
+    setLoading(true)
+
+    const payload = {
+      supplyName: supply.supplyName,
+      supplyType: supply.supplyType,
+      supplyQty: supply.supplyQty,
+      supplyPrice: supply.supplyPrice
+    };
+
+    secureFetch(`${serverUrl}/supplies/supply`, 
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    })
+    .then(async (response) => {
+      const responseBody = await response.json()
+      console.log(response)
+      if(response.status !== 200) {
+        console.log(responseBody);
+        const errorString = responseBody.map((error) => error.message).join('\n');
+        alert(errorString);
+      } else {        
+        alert(`Successfully added ${supply.supplyQty}pcs ` + 
+              `of ${supply.supplyName} ` + 
+              ` (${supply.supplyType}) ` + 
+              `for ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PHP' }).format(supply.supplyPrice)} each.`);
+        refreshInventory();
+        e.target.reset();
+      }
+    })
+    .catch(error => console.error(error)).finally(() => {
+      setLoading(false)
+    })
+  }
 
   return (
     <div className="add-item-container">
       <h4 className="text-2xl mb-2">Add Item to Inventory</h4>
-      {error && <p className="error-message">{error}</p>}
-      <form onSubmit={handleSubmit}>
+      {/* {errors && <p className="error-message">{errors}</p>} */}
+      <form onSubmit={AddSupply}>
         <div className="table-container">
           <table>
             <tbody>
-              <tr className='flex gap-2'>
-                <td className='flex-1'>
-                  <input
-                    type="text"
-                    value={supplyName}
-                    onChange={(e) => setSupplyName(e.target.value)}
-                    placeholder="Item Name"
-                  />
+              <tr className='flex gap-2 pt-2'>
+                
+                <td className='flex-1'>                  
+                  <label>
+                    <div className="label hidden">
+                      <span className="label-text-alt"></span>
+                    </div>
+                    <div className="form-control">
+                      <input type="text" name='supplyName' placeholder='' 
+                        className={"input input-floating peer " + 
+                          (errors.supplyName && "is-invalid")} />
+                      <span className="input-floating-label">Name</span>
+                    </div>
+                    <div className="label">
+                      {errors.supplyName && (
+                        <span className="label-text-alt">{errors.supplyName}</span>
+                      )}
+                    </div>
+                  </label>
                 </td>
-                <td className='flex-none !w-52'>
-                  <input
-                    type="text"
-                    value={supplyType}
-                    onChange={(e) => setSupplyType(e.target.value)}
-                    placeholder="Brand Name"
-                  />
+
+                <td className='flex-1'>                  
+                  <label>
+                    <div className="label hidden">
+                      <span className="label-text-alt"></span>
+                    </div>
+                    <div className="form-control">
+                      <input type="text" name='supplyType' list='typeOptions' placeholder='' 
+                        className={"input input-floating peer " + 
+                          (errors.supplyType && "is-invalid")}
+                          onChange={(e) => {
+                            const isSupply = e.target.value.includes("supply:");
+                            if (!isSupply) {
+                              setIsSupplyQty(-1)
+                            } else {
+                              setIsSupplyQty('')
+                            }
+                          }} />
+                      <datalist id="typeOptions">
+                        <option value="test:Laboratory"></option>
+                        <option value="test:Imaging"></option>
+                        <option value="test:Diagnostic"></option>
+                        <option value="treatment:Treatment"></option>
+                        <option value="supply:Respiratory"></option>
+                        <option value="supply:Wound_Care"></option>
+                        <option value="supply:IV"></option>
+                        <option value="supply:Medication"></option>
+                        <option value="supply:Monitoring"></option>
+                        <option value="supply:Diagnostic"></option>
+                        <option value="supply:Resuscitation"></option>
+                        <option value="supply:PPE"></option>
+                        <option value="supply:Orthopedic"></option>
+                        <option value="supply:PatientTransport"></option>
+                        <option value="supply:Surgical"></option>
+                        <option value="supply:Miscellaneous"></option>
+                      </datalist>
+                      <span className="input-floating-label">Type</span>
+                    </div>
+                    <div className="label">
+                      {errors.supplyType && (
+                        <span className="label-text-alt">{errors.supplyType}</span>
+                      )}
+                    </div>
+                  </label>
                 </td>
-                <td className='flex-none !w-28'>
-                  <input
-                    type="number"
-                    value={supplyQty}
-                    onChange={(e) => setSupplyQty(e.target.value)}
-                    placeholder="Quantity"
-                  />
+                
+                <td className='flex-1'>                  
+                  <label>
+                    <div className="label hidden">
+                      <span className="label-text-alt"></span>
+                    </div>
+                    <div className="form-control">
+                      <input type="number" name='supplyQty' placeholder='' 
+                        className={"input input-floating peer " + 
+                          (errors.supplyQty && "is-invalid")} 
+                          value={isSupplyQty}
+                          onChange={e => setIsSupplyQty(e.target.value)}
+                          disabled={isSupplyQty === -1} />
+                      <span className="input-floating-label">Quantity</span>
+                    </div>
+                    <div className="label">
+                      {errors.supplyQty && (
+                        <span className="label-text-alt">{errors.supplyQty}</span>
+                      )}
+                    </div>
+                  </label>
                 </td>
-                <td className='flex-none !w-32'>
-                  <input
-                    type="number"
-                    value={supplyPrice}
-                    onChange={(e) => setSupplyPrice(e.target.value)}
-                    placeholder="Price"
-                  />
+
+                <td className='flex-1'>                  
+                  <label>
+                    <div className="label hidden">
+                      <span className="label-text-alt"></span>
+                    </div>
+                    <div className="form-control">
+                      <input type="number" name='supplyPrice' placeholder='' 
+                        className={"input input-floating peer " + 
+                          (errors.supplyPrice && "is-invalid")} />
+                      <span className="input-floating-label">Price</span>
+                    </div>
+                    <div className="label">
+                      {errors.supplyPrice && (
+                        <span className="label-text-alt">{errors.supplyPrice}</span>
+                      )}
+                    </div>
+                  </label>
                 </td>
+
                 <td className='flex-none !w-20'>
-                  <button type="submit" className='w-full'>Add</button>
+                  <button type="submit" className='w-full h-full'>Add</button>
                 </td>
               </tr>
             </tbody>
@@ -89,116 +196,41 @@ function AddItem({ addItemToInventory }) {
   );
 }
 
-function Table() {
-  const { serverUrl } = useConfig();
-  const [supplies, setSupplies] = useState({});
-  const [ query, setQuery ] = useState('');
-  const [currentPage, setCurrentPage] = useState(0);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
-  const [loading, setLoading] = useState(false)
-  
-  useEffect(() => {
-    if (!serverUrl) return;
-    setLoading(true)
-    fetch(`${serverUrl}/supplies/search?` + new URLSearchParams({
-      query: query,
-      page: currentPage,
-      size: itemsPerPage
-    }).toString(), 
-    {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: 'include',
-    })
-    .then(response => response.json())
-    .then(data => setSupplies(data))
-    .catch(error => console.error(error)).
-    finally(() => {
-      setLoading(false)
-    })
 
-  }, [currentPage, itemsPerPage, serverUrl]);
+function Inventory ({ showUpdateModal, 
+                      supplies, 
+                      loading, 
+                      FetchSupplies, 
+                      setQuery, 
+                      currentPage, 
+                      setCurrentPage,
+                      itemsPerPage}) {  
 
-  useEffect(() => {
-    console.log(supplies);
-  }, [supplies]);
+  const refreshInventory = () => {
+    FetchSupplies(); 
+  };
 
-  return (
-    <div className="border-base-content/25 w-full overflow-x-auto h-fit rounded-lg border shadow">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Quantity</th>
-            <th>Price</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        {
-          loading ? (<span>loading</span>)
-                  : (
-                    <tbody>
-                      {
-                        // console.log(supplies.content)
-                        supplies?.content?.map((supply) => (                          
-                          <tr className='hover'>
-                            <th scope="row">{supply.id}</th>
-                            <td>{supply.supplyName}</td>
-                            <td>{supply.supplyType}</td>
-                            <td>{supply.supplyQty}</td>
-                            <td>{supply.supplyPrice}</td>
-                            <td><button class="btn btn-circle btn-text btn-sm" aria-label="Action button"><span class="icon-[tabler--pencil]"></span></button></td>
-                          </tr>
-                        ))
-                      }
-                    </tbody>
-                    )
-        }
-      </table>
-    </div>
-  )
-}
+  const NextPage = () => {
+    if (currentPage < supplies.totalPages - 1) {
+      setCurrentPage(currentPage + 1);
+    }
+  }
 
+  const PreviousPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1);
+    }
+  }
 
-function Inventory ({ showUpdateModal, inventory, handleDeleteItem, onSearch }) {  
-  const { serverUrl } = useConfig();
-  const [supplies, setSupplies] = useState({});
-  const [ query, setQuery ] = useState('');
-  const [currentPage, setCurrentPage] = useState(0);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
-  const [loading, setLoading] = useState(false)
-  
-  useEffect(() => {
-    if (!serverUrl) return;
-    setLoading(true)
-    fetch(`${serverUrl}/supplies/search?` + new URLSearchParams({
-      query: query,
-      page: currentPage,
-      size: itemsPerPage
-    }).toString(), 
-    {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: 'include',
-    })
-    .then(response => response.json())
-    .then(data => setSupplies(data))
-    .catch(error => console.error(error)).
-    finally(() => {
-      setLoading(false)
-    })
-
-  }, [currentPage, itemsPerPage, serverUrl]);
-
-  useEffect(() => {
-    console.log(supplies);
-  }, [supplies]);
+  const Search = () => {
+    setQuery(document.getElementById('searchInput').value);
+    setCurrentPage(0);
+  }
 
 
   return (
     <div className="inventory-container">
+
       <h4 className="text-2xl mb-2">Inventory</h4>
 
       {/* Search Bar */}
@@ -209,9 +241,8 @@ function Inventory ({ showUpdateModal, inventory, handleDeleteItem, onSearch }) 
             className="w-full "
             id="searchInput"
             placeholder="Search Inventory"
-            onChange={onSearch}    
           />
-          <button className="btn btn-primary h-full !px-8">Search</button>
+          <button onClick={Search} className="btn btn-primary h-full !px-8">Search</button>
         </div>
       
 
@@ -219,77 +250,229 @@ function Inventory ({ showUpdateModal, inventory, handleDeleteItem, onSearch }) 
       <table>
         <thead>
           <tr>
+            <th>id</th>
             <th>Name</th>
             <th>Type</th>
             <th>Quantity</th>
             <th>Price</th>
-            <th>Actions</th>
+            <th className='!text-center'>Actions</th>
           </tr>
         </thead>
-        {
-          loading ? (<span>loading</span>)
-                  : (
-                    // console.log(supplies.content)
-                    <tbody>
-                      {
-                      supplies?.content?.map((item) => (
-                        <tr key={item.id}>
-                          <td>{item.supplyName}</td>
-                          <td>{item.supplyType}</td>
-                          <td>{item.supplyQty}</td>
-                          <td>₱{item.supplyPrice}</td> {/* Display price */}
-                          <td>
-                            <span class="icon-[tabler--pencil]"></span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  )
-        }
+        {loading ? (
+          <tbody>
+            <tr>
+              <td colSpan="5">Loading...</td>
+            </tr>
+          </tbody>
+        ) : (
+          <tbody>
+            {supplies?.content?.map((item) => (
+              <tr key={item.id}>
+                <td className='text-black'>{item.id}</td>
+                <td className='text-black'>{item.supplyName}</td>
+                <td className='text-black'>{item.supplyType}</td>
+                <td className='text-black'>{item.supplyQty == -1 ? ( '\u221E (Service)' ) : item.supplyQty}</td>
+                <td className='text-black'>{ new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PHP' }).format(item.supplyPrice)}</td>
+                <td className='text-black flex justify-center'>
+                  <button type="button" onClick={() => showUpdateModal(item.id)} className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit'>
+                    <span className="icon-[tabler--pencil] text-neutral-500"></span>
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        )}
       </table>
-
-
       {/* Pagination Controls */}
-      {/* <div className="pagination-controls">
-        <button onClick={handlePreviousPage} disabled={currentPage === 1}>
-          Previous
-        </button>
-        <span>
-          Page {currentPage} of {totalPages}
-        </span>
-        <button onClick={handleNextPage} disabled={currentPage === totalPages}>
-          Next
-        </button>
-      </div> */}
+      {
+        !loading && supplies?.pageable ? (
+          <div className="pagination-controls">
+            <button 
+              onClick={PreviousPage} 
+              disabled={currentPage === 0}
+            >
+              Previous
+            </button>
+            <span className='text-black'>
+              Page {currentPage + 1} of {supplies.totalPages}
+            </span>
+            <button 
+              onClick={NextPage} 
+              disabled={currentPage === supplies.totalPages}
+            >
+              Next
+            </button>
+          </div>
+        ) : null
+      }
 
     </div>
   );
 };
 
+function Modal({ id, closeModal, refreshInventory }) {
+  const { serverUrl } = useConfig();
+  const [loading, setLoading] = useState(false)
+  const [supply, setSupply] = useState({});
+  const [errors, setErrors] = useState({});
 
+  const validateModel = () => {
+    const foundErrors = validateSupply(supply);
+    setErrors(foundErrors);
+    return Object.keys(foundErrors).length === 0;
+  };
 
+  const FetchSupply = () => {
+    if (!serverUrl) return;
+    setLoading(true)
+    secureFetch(`${serverUrl}/supplies/${id}`, 
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+    })
+    .then(response => response.json())
+    .then(data => setSupply(data))
+    .catch(error => console.error(error)).
+    finally(() => {
+      setLoading(false)
+    })
+  }
 
-const Modal = ({ quantityNeeded, setQuantityNeeded, onUpdateQuantity, closeModal, error }) => {
+  const UpdateSupply = () => {
+    if (!serverUrl) return;
+    console.log(`!validateModel(): ${!validateModel()}`)
+    console.log(errors)
+    if (!validateModel()) return;
+    setLoading(true)
+
+    const payload = {
+      id: supply.id,
+      supplyName: supply.supplyName,
+      supplyType: supply.supplyType,
+      supplyQty: supply.supplyQty,
+      supplyPrice: supply.supplyPrice
+    };
+
+    secureFetch(`${serverUrl}/supplies/supply/${id}`, 
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    })
+    .then(async (response) => {
+      const responseBody = await response.json()
+      console.log(response)
+      if(response.status !== 200) {
+        console.log(responseBody);
+        const errorString = responseBody.map((error) => error.message).join('\n');
+        alert(errorString);
+      } else {        
+        refreshInventory();
+        closeModal();
+      }
+    })
+    .catch(error => console.error(error)).
+    finally(() => {
+      setLoading(false)
+    })
+  }
+
+  useEffect(() => {
+    FetchSupply();
+  }, [id]);
+
   return (
-    <div className="modal" style={{ display: 'flex' }}>
-      <div className="modal-content">
-        <h3>Enter Quantity</h3>
-        <input
-          type="number"
-          value={quantityNeeded}
-          onChange={(e) => setQuantityNeeded(e.target.value)}
-          placeholder="Enter quantity needed"
-        />
-        {error && <p className="error-message">{error}</p>}
-        <button onClick={onUpdateQuantity} className="smaller-update-button" >Add to Order</button>
-        <button onClick={closeModal} className="smaller-update-button">Close</button>
-      </div>
+    <div className='qe-modal-overlay'>      
+        { loading ? (
+          <span>Loading...</span>
+          ) : (
+            <div className="qe-modal gap-4" style={{ display: 'flex' }}>   
+              <h4 className="text-2xl mb-2">Inventory Item No. {supply.id}</h4>
+
+              <label className="input-group max-w-sm w-full max-w-full">
+                <span className="input-group-text font-bold uppercase">Name</span>
+                <input type="text" className="input grow !text-black" value={supply.supplyName} readOnly disabled />
+              </label>
+              
+              <label className="input-group max-w-sm w-full max-w-full">
+                <span className="input-group-text font-bold uppercase">Type</span>
+                <input type="text" className="input grow !text-black" value={supply.supplyType} readOnly disabled />
+              </label>
+
+              <div className='w-full gap-4 flex'>
+
+                <div className='form-control max-w-sm'>
+                  <label className="input-group max-w-sm w-full max-w-full">
+                    <span className={"input-group-text font-bold uppercase " + 
+                      (errors.supplyQty && "text-error")}>QUANTITY</span>
+                    <input type="number" className={"input grow !text-black " + 
+                      (errors?.supplyQty && "is-invalid text-error ")} value={supply.supplyQty}
+                      onChange={(e) => setSupply((prev) => ({
+                        ...prev,
+                        supplyQty: parseInt(e.target.value)
+                      }))}
+                      readOnly={!supply?.supplyType?.includes('supply:')} disabled={!supply?.supplyType?.includes('supply:')}
+                    />
+                  </label>
+                  {errors.supplyQty && (
+                    <div className="label">
+                      <span className="label-text-alt text-error">{errors.supplyQty}</span>
+                    </div>
+                    )} 
+                </div>
+
+                <div className='form-control max-w-sm'>
+                  <label className="input-group max-w-sm w-full max-w-full ">
+                    <span className={"input-group-text font-bold uppercase text-nowrap " + 
+                      (errors.supplyPrice && "text-error")}>PRICE (PHP)</span>
+                    <input type="number" className={"input grow " + 
+                      (errors.supplyPrice && "is-invalid text-error")} 
+                      onChange={(e) => setSupply((prev) => ({
+                        ...prev,
+                        supplyPrice: parseInt(e.target.value)
+                      }))}
+                      value={supply.supplyPrice || ''} />
+                  </label>
+                  {errors.supplyPrice && (
+                    <div className="label">
+                      <span className="label-text-alt text-error">{errors.supplyPrice}</span>
+                    </div>
+                    )} 
+                </div>
+
+              </div>
+
+              <button onClick={UpdateSupply} className="btn btn-primary">Update</button>
+              <button onClick={closeModal} className="btn btn-secondary">Close</button>
+            </div>
+        )}
     </div>
   );
 };
 
+function validateSupply(supply) {
+  const foundErrors = {};
+  if (!supply.supplyName) {
+    foundErrors.supplyName = 'Name is required';
+  } 
+  if (!supply.supplyType) {
+    foundErrors.supplyType = 'Type is required';
+  }
+  const isSupply = supply.supplyType.includes("supply:");
+  if (isSupply && (supply.supplyQty < 0 || supply.supplyQty === '')) {
+    foundErrors.supplyQty = 'Supply quantity cannot be negative';
+  }
+  if (supply.supplyPrice <= 0) {
+    foundErrors.supplyPrice = 'Price cannot be free or negative';
+  }
+  return foundErrors;
+}
 
-const Sidebar = () => {
+
+
+function Sidebar() {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false); // State for modal visibility
 
@@ -302,24 +485,23 @@ return (
   <div className="emergency-room-container">
     <aside className="sidebar">
     <img src={quicker} alt="Quicker Logo" className="logo" />
-      <ul className="menu">
-        <li className="menu-item" onClick={() => navigate('/emergency')}>Emergency Room</li>
-        <li className="menu-item active" onClick={() => navigate('/inventory')}>Inventory</li>
-        <li className="menu-item" onClick={() => navigate('/bedmanagement')}>Bed Management</li>
-        <li className="menu-item" onClick={() => navigate('/billing')}>Billing</li>
-        <li className="menu-item" onClick={() => setShowModal(true)}>Log-out</li>
+      <ul className="nav-menu">
+        <li className="nav-menu-item" onClick={() => navigate('/emergency')}>Emergency Room</li>
+        <li className="nav-menu-item active" onClick={() => navigate('/inventory')}>Inventory</li>
+        <li className="nav-menu-item" onClick={() => navigate('/bedmanagement')}>Bed Management</li>
+        <li className="nav-menu-item" onClick={() => navigate('/billing')}>Billing</li>
+        <li className="nav-menu-item" onClick={() => setShowModal(true)}>Log-out</li>
       </ul>
 
       {/* Log-out Confirmation Modal */}
       {showModal && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h2>Confirm Log-out</h2>
+        <div className="qe-modal-overlay">
+          <div className="qe-modal !w-auto flex flex-col gap-4">
+            <h4 className="text-2xl">Confirm Log-out</h4>
             <p>Are you sure you want to log out?</p>
-            <div className="modal-actions">
-              
-              <button onClick={() => setShowModal(false)} className="btn-cancel">Cancel</button>
-              <button onClick={handleLogout} className="btn-confirm">Yes</button>
+            <div className="flex gap-4 justify-end">              
+              <button onClick={() => setShowModal(false)} className="btn">Cancel</button>
+              <button onClick={handleLogout} className="btn">Yes</button>
             </div>
           </div>
         </div>
@@ -328,37 +510,48 @@ return (
   </div>
 );
 }
-
-
   
 
 // App Component (Main Entry Point)
 function App() {
   const [modalVisible, setModalVisible] = useState(false);
-  const [currentItem, setCurrentItem] = useState(null);
-  const [inventory, setInventory] = useState([
-    // Sample data
-  ]);
-  const [filteredInventory, setFilteredInventory] = useState(inventory);
+  const [currentItemID, setCurrentItemID] = useState(null);
+  
+  const { serverUrl } = useConfig();
+  const [supplies, setSupplies] = useState({});
+  const [query, setQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(6);
+  const [loading, setLoading] = useState(false);
 
-  const [lastOrderId, setLastOrderId] = useState(0);
-
-  const handleSearch = (e) => {
-    const query = e.target.value.toLowerCase();
-    if (query) {
-      const filtered = inventory.filter(
-        (item) =>
-          item.itemName.toLowerCase().includes(query) ||
-          item.brand.toLowerCase().includes(query)
-      );
-      setFilteredInventory(filtered);
-    } else {
-      setFilteredInventory(inventory);
-    }
-  };
+  const FetchSupplies = () => {
+    if (!serverUrl) return;
+    setLoading(true)
+    secureFetch(`${serverUrl}/supplies/search?` + new URLSearchParams({
+      query: query,
+      page: currentPage,
+      size: itemsPerPage
+    }).toString(), 
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+    })
+    .then(response => response.json())
+    .then(data => setSupplies(data))
+    .catch(error => console.error(error)).
+    finally(() => {
+      setLoading(false)
+    })
+  }
+  
+  useEffect(() => {
+    FetchSupplies();
+  }, [query, currentPage, itemsPerPage, serverUrl]);
 
   const showUpdateModal = (item) => {
-    setCurrentItem({ ...item, quantityNeeded: item.quantity });
+    console.log('showUpdateModal', item);
+    setCurrentItemID(item);
     setModalVisible(true);
   };
 
@@ -366,78 +559,40 @@ function App() {
     setModalVisible(false);
   };
 
-  // Handle adding item to order
-  const handleAddToOrder = () => {
-    if (currentItem) {
-      const quantityNeeded = parseInt(currentItem.quantityNeeded);
-  
-      if (quantityNeeded > currentItem.quantity) {
-        alert(`You cannot order more than the available quantity of ${currentItem.quantity}`);
-        return;
-      }
-  
-      const newOrder = {
-        ...currentItem,
-        orderId: `ORD-${Date.now()}`,
-        quantity: quantityNeeded,
-      };
-  
-      // Update inventory
-      const updatedInventory = inventory.map((item) =>
-        item.id === currentItem.id
-          ? { ...item, quantity: item.quantity - quantityNeeded }
-          : item
-      );
-  
-      setInventory(updatedInventory);
-      closeModal();
-    }
-  };
-
-
-  const addItemToInventory = (newItem) => {
-    setInventory((prevInventory) => {
-      const updatedInventory = [...prevInventory, newItem];
-      setFilteredInventory(updatedInventory);
-      return updatedInventory;
-    });
-  };
-
-  // Delete item from inventory
-  const handleDeleteItem = (itemId) => {
-    const updatedInventory = inventory.filter(item => item.id !== itemId);
-    setInventory(updatedInventory);
-    setFilteredInventory(updatedInventory);
-  };
-
   return (
     <div style={{ display: 'flex', flexDirection: 'row', height: '100vh', position: 'relative' }}>
       <Sidebar />
       <div className="main-container">
         <div className="content-container">
-          {/* <Table /> */}
           {/* Inventory */}
           <Inventory
             showUpdateModal={showUpdateModal}
-            inventory={filteredInventory}
-            handleDeleteItem={handleDeleteItem}
-            onSearch={handleSearch}
+            supplies={supplies}
+            loading={loading}
+            FetchSupplies={FetchSupplies}
+            setQuery={setQuery}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            itemsPerPage={itemsPerPage}
           />
         </div>
 
         {/* Add Item Below Inventory */}
-        <AddItem addItemToInventory={addItemToInventory} />
+        <AddItem          
+          refreshInventory={FetchSupplies} />
       </div>
 
       {/* Modal for Quantity Input */}
-      {modalVisible && currentItem && (
+      {modalVisible && (currentItemID !== null) && (
         <Modal
-          quantityNeeded={currentItem.quantityNeeded}
-          setQuantityNeeded={(quantity) => setCurrentItem({ ...currentItem, quantityNeeded: quantity })}
-          onUpdateQuantity={handleAddToOrder}
+          id={currentItemID}
           closeModal={closeModal}
+          refreshInventory={FetchSupplies}
         />
       )}
+
+      
+
     </div>
   );
 };
