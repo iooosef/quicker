@@ -1,585 +1,1160 @@
-import React, { useState } from "react";
-import { useNavigate } from 'react-router-dom';
-import "./emergencyRoom.css";
+import React, { useEffect, useState } from 'react';
+import './inventory.css'; 
 import quicker from "./assets/quicker.png";
+import { useNavigate } from 'react-router-dom';
+import { useConfig } from './util/ConfigContext';
+import { useUser } from './auth/UserContext';
+import secureFetch from './auth/SecureFetch';
 
-const EmergencyRoom = () => {
-  const navigate = useNavigate();
-  const [patients, setPatients] = useState([]);
-  const [nextPatientID, setNextPatientID] = useState(0); // Start from 0
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [selectedPatientIndex, setSelectedPatientIndex] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [treatmentsOrdered, setTreatmentsOrdered] = useState(""); // Temporary input for new treatment
-  const [patientLogs, setPatientLogs] = useState([]); // Logs for all updates and treatments
-  const [formMode, setFormMode] = useState("PatientDetails"); // Default to "Patient Details"
+function AddItem({ refreshAdmissions }) {
+  const { serverUrl } = useConfig();
+  const [loading, setLoading] = useState(false);
+  const [isSupplyQty, setIsSupplyQty] = useState('');
+  const [errors, setErrors] = useState({});
 
-  
-
-  const [newPatient, setNewPatient] = useState({
-    name: "",
-    triage: "C",
-    bed: "Bed 01",
-  });
-
-  const [statusUpdate, setStatusUpdate] = useState("");
-
-  const [patientDetails, setPatientDetails] = useState({
-    patientID: "",
-    fullName: "",
-    dob: "",
-    address: "",
-    contactNumber: "",
-    sex: "Male",
-    emergencyContactName: "",
-    emergencyContactNumber: "",
-    pwdID: "",
-    seniorCitizenID: "",
-  });
-
-  // Add Patient Modal Handlers
-  const openAddModal = () => setShowAddModal(true);
-  const closeAddModal = () => {
-    setNewPatient({ name: "", triage: "C", bed: "Bed 01" });
-    setShowAddModal(false);
+  const validateModel = (supply) => {
+    const foundErrors = validateAdmissionModel(supply);
+    setErrors(foundErrors);
+    return Object.keys(foundErrors).length === 0;
   };
 
-  const handleAddTreatment = () => {
-    if (!treatmentsOrdered.trim()) return;
-  
-    const updatedPatients = [...patients];
-    const patient = updatedPatients[selectedPatientIndex];
-  
-    // Add treatment
-    patient.treatments = patient.treatments || [];
-    patient.treatments.push(treatmentsOrdered);
-  
-    // Add log entry
-    patient.logs = patient.logs || [];
-    patient.logs.push({
-      time: new Date().toLocaleString(),
-      action: `Treatment ordered: ₱{treatmentsOrdered}`,
-    });
-  
-    setPatients(updatedPatients);
-    setTreatmentsOrdered(""); // Clear input
-  };
+  const AddSupply = (e) => {
+    e.preventDefault();
 
+    if (!serverUrl) return;
 
-  
-
-  const handleAddPatient = () => {
-    setPatients([
-      ...patients,
-      {
-        id: `P-${nextPatientID}`,
-        ...newPatient,
-        status: "Waiting for Assessment",
-        lastUpdated: new Date().toLocaleString(),
-        treatments: [],
-        logs: [
-          {
-            time: new Date().toLocaleString(),
-            action: "Patient added",
-          },
-        ],
-        details: {
-          fullName: newPatient.name,
-          dob: "",
-          address: "",
-          contactNumber: "",
-          sex: "Male",
-          emergencyContactName: "",
-          emergencyContactNumber: "",
-          pwdID: "",
-          seniorCitizenID: "",
-        },
-      }
-      
-    ]);
-    setNextPatientID(nextPatientID + 1); // Increment ID for next patient
-    closeAddModal();
-  };
-  
-
-  // Update Status Modal Handlers
-  const openUpdateModal = (index) => {
-    setSelectedPatientIndex(index);
-    setShowUpdateModal(true);
-  };
-  const closeUpdateModal = () => {
-    setSelectedPatientIndex(null);
-    setShowUpdateModal(false);
-  };
-
-  const handleStatusUpdate = () => {
-    const updatedPatients = [...patients];
-    const patient = updatedPatients[selectedPatientIndex];
-  
-    // Update status
-    patient.status = statusUpdate;
-    patient.lastUpdated = new Date().toLocaleString();
-  
-    // Add log entry
-    patient.logs = patient.logs || [];
-    patient.logs.push({
-      time: new Date().toLocaleString(),
-      action: `Status updated to: ${statusUpdate}`,
-    });
-  
-    setPatients(updatedPatients);
-    closeUpdateModal();
-  };
-  
-
-  // Open Details Modal
-  const openDetailsModal = (index) => {
-    setSelectedPatientIndex(index);
-    setPatientDetails(patients[index].details); // Load patient-specific details
-    setShowDetailsModal(true);
-  };
-  
-
-  const closeDetailsModal = () => setShowDetailsModal(false);
-
-  const handleSaveDetails = () => {
-    const updatedPatients = [...patients];
-    const selectedPatient = updatedPatients[selectedPatientIndex];
-  
-    // Sync changes made in the modal back to the patients array
-    selectedPatient.details = { ...patientDetails };
-    selectedPatient.name = patientDetails.fullName; // Update the name in the table
-    
-    setPatients(updatedPatients);
-    closeDetailsModal();
-  };
-  
-  
-
-  // Filter Patients by Search Term
-  const filteredPatients = patients.filter((patient) =>
-    patient.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  const Sidebar = () => {
-    const navigate = useNavigate();
-    const [showModal, setShowModal] = useState(false); // State for modal visibility
-  
-    const handleLogout = () => {
-      setShowModal(false); // Close modal
-      navigate('/LoginForm'); // Navigate to the login page
+    const formData = new FormData(e.target);
+    const supply = {
+      supplyName: formData.get("supplyName"),
+      supplyType: formData.get("supplyType"),
+      supplyQty: formData.get("supplyQty"),
+      supplyPrice: formData.get("supplyPrice"),
     };
-  // Sidebar Component
+
+    console.log(supply)
+    if (!validateModel(supply)) return;
+    setLoading(true)
+
+    const payload = {
+      supplyName: supply.supplyName,
+      supplyType: supply.supplyType,
+      supplyQty: supply.supplyQty,
+      supplyPrice: supply.supplyPrice
+    };
+
+    secureFetch(`${serverUrl}/supplies/supply`, 
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    })
+    .then(async (response) => {
+      const responseBody = await response.json()
+      console.log(response)
+      if(response.status !== 200) {
+        console.log(responseBody);
+        const errorString = responseBody.map((error) => error.message).join('\n');
+        alert(errorString);
+      } else {        
+        alert(`Successfully added ${supply.supplyQty}pcs ` + 
+              `of ${supply.supplyName} ` + 
+              ` (${supply.supplyType}) ` + 
+              `for ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PHP' }).format(supply.supplyPrice)} each.`);
+        refreshAdmissions();
+        e.target.reset();
+      }
+    })
+    .catch(error => console.error(error)).finally(() => {
+      setLoading(false)
+    })
+  }
+
   return (
-    <div className="emergency-room-container">
-      <aside className="sidebar">
-      <img src={quicker} alt="Quicker Logo" className="logo" />
-        <ul className="menu">
-          <li className="menu-item active" onClick={() => navigate('/emergency')}>Emergency Room</li>
-          <li className="menu-item" onClick={() => navigate('/inventory')}>Inventory</li>
-          <li className="menu-item" onClick={() => navigate('/bedmanagement')}>Bed Management</li>
-          <li className="menu-item" onClick={() => navigate('/billing')}>Billing</li>
-          <li className="menu-item" onClick={() => setShowModal(true)}>Log-out</li>
-        </ul>
-  
-        {/* Log-out Confirmation Modal */}
-        {showModal && (
-          <div className="modal-overlay">
-            <div className="modal">
-              <h2>Confirm Log-out</h2>
-              <p>Are you sure you want to log out?</p>
-              <div className="modal-actions">
+    <div className="add-item-container">
+      <h4 className="text-2xl mb-2">Add Item to Inventory</h4>
+      {/* {errors && <p className="error-message">{errors}</p>} */}
+      <form onSubmit={AddSupply}>
+        <div className="table-container">
+          <table>
+            <tbody>
+              <tr className='flex gap-2 pt-2'>
                 
-                <button onClick={() => setShowModal(false)} className="btn-cancel">Cancel</button>
-                <button onClick={handleLogout} className="btn-confirm">Yes</button>
-              </div>
-            </div>
-          </div>
-        )}
-      </aside>
+                <td className='flex-1'>                  
+                  <label>
+                    <div className="label hidden">
+                      <span className="label-text-alt"></span>
+                    </div>
+                    <div className="form-control">
+                      <input type="text" name='supplyName' placeholder='' 
+                        className={"input input-floating peer " + 
+                          (errors.supplyName && "is-invalid")} />
+                      <span className="input-floating-label">Name</span>
+                    </div>
+                    <div className="label">
+                      {errors.supplyName && (
+                        <span className="label-text-alt">{errors.supplyName}</span>
+                      )}
+                    </div>
+                  </label>
+                </td>
+
+                <td className='flex-1'>                  
+                  <label>
+                    <div className="label hidden">
+                      <span className="label-text-alt"></span>
+                    </div>
+                    <div className="form-control">
+                      <input type="text" name='supplyType' list='typeOptions' placeholder='' 
+                        className={"input input-floating peer " + 
+                          (errors.supplyType && "is-invalid")}
+                          onChange={(e) => {
+                            const isSupply = e.target.value.includes("supply:");
+                            if (!isSupply) {
+                              setIsSupplyQty(-1)
+                            } else {
+                              setIsSupplyQty('')
+                            }
+                          }} />
+                      <datalist id="typeOptions">
+                        <option value="test:Laboratory"></option>
+                        <option value="test:Imaging"></option>
+                        <option value="test:Diagnostic"></option>
+                        <option value="treatment:Treatment"></option>
+                        <option value="supply:Respiratory"></option>
+                        <option value="supply:Wound_Care"></option>
+                        <option value="supply:IV"></option>
+                        <option value="supply:Medication"></option>
+                        <option value="supply:Monitoring"></option>
+                        <option value="supply:Diagnostic"></option>
+                        <option value="supply:Resuscitation"></option>
+                        <option value="supply:PPE"></option>
+                        <option value="supply:Orthopedic"></option>
+                        <option value="supply:PatientTransport"></option>
+                        <option value="supply:Surgical"></option>
+                        <option value="supply:Miscellaneous"></option>
+                      </datalist>
+                      <span className="input-floating-label">Type</span>
+                    </div>
+                    <div className="label">
+                      {errors.supplyType && (
+                        <span className="label-text-alt">{errors.supplyType}</span>
+                      )}
+                    </div>
+                  </label>
+                </td>
+                
+                <td className='flex-1'>                  
+                  <label>
+                    <div className="label hidden">
+                      <span className="label-text-alt"></span>
+                    </div>
+                    <div className="form-control">
+                      <input type="number" name='supplyQty' placeholder='' 
+                        className={"input input-floating peer " + 
+                          (errors.supplyQty && "is-invalid")} 
+                          value={isSupplyQty}
+                          onChange={e => setIsSupplyQty(e.target.value)}
+                          disabled={isSupplyQty === -1} />
+                      <span className="input-floating-label">Quantity</span>
+                    </div>
+                    <div className="label">
+                      {errors.supplyQty && (
+                        <span className="label-text-alt">{errors.supplyQty}</span>
+                      )}
+                    </div>
+                  </label>
+                </td>
+
+                <td className='flex-1'>                  
+                  <label>
+                    <div className="label hidden">
+                      <span className="label-text-alt"></span>
+                    </div>
+                    <div className="form-control">
+                      <input type="number" name='supplyPrice' placeholder='' 
+                        className={"input input-floating peer " + 
+                          (errors.supplyPrice && "is-invalid")} />
+                      <span className="input-floating-label">Price</span>
+                    </div>
+                    <div className="label">
+                      {errors.supplyPrice && (
+                        <span className="label-text-alt">{errors.supplyPrice}</span>
+                      )}
+                    </div>
+                  </label>
+                </td>
+
+                <td className='flex-none !w-20'>
+                  <button type="submit" className='w-full h-full'>Add</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </form>
     </div>
   );
-  }
-  return (
-    <div className="emergency-room-container">
-      <Sidebar />
-    
-      {/* Main Content */}
-      <div className="emergency-room-content">
-        <header className="header">
-          <h1>Emergency Room</h1>
-        </header>
+}
 
-        <div className="controls">
-          <button className="update-button" onClick={openAddModal}>
-            + Add Patient
-          </button>
+
+function Admissions ({ showUpdateModal, 
+                      patientAdmissions, 
+                      loading, 
+                      FetchPatientAdmissions, 
+                      setQuery, 
+                      currentPage, 
+                      setCurrentPage,
+                      itemsPerPage}) {  
+
+  const refreshAdmissions = () => {
+    FetchPatientAdmissions(); 
+  };
+
+  const NextPage = () => {
+    if (currentPage < patientAdmissions.totalPages - 1) {
+      setCurrentPage(currentPage + 1);
+    }
+  }
+
+  const PreviousPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1);
+    }
+  }
+
+  const Search = () => {
+    setQuery(document.getElementById('searchInput').value);
+    setCurrentPage(0);
+  }
+
+
+  return (
+    <div className="inventory-container">
+
+      <h4 className="text-2xl mb-2">Emergency Room Admissions</h4>
+
+      {/* Search Bar */}
+      
+        <div className='flex gap-4'>
           <input
             type="text"
-            className="search-bar"
-            placeholder="Search by name"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full "
+            id="searchInput"
+            placeholder="Search ER Admissions"
           />
+          <button onClick={Search} className="btn btn-primary h-full !px-8">Search</button>
         </div>
+      
 
-        <table className="patients-table">
-          <thead>
-            <tr>
-              <th>Patient ID</th>
-              <th>Triage</th>
-              <th>Patient</th>
-              <th>Bed</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
+      {/* Inventory Table */}
+      <table>
+        <thead>
+          <tr>
+            <th>id</th>
+            <th>Triage</th>
+            <th>Name</th>
+            <th>Bed Location</th>
+            <th>Status</th>
+            <th className='!text-center'>Actions</th>
+          </tr>
+        </thead>
+        {loading ? (
           <tbody>
-            {filteredPatients.map((patient, index) => (
-              <tr key={index}>
-                <td>{patient.id}</td>
-                <td className={`triage-${patient.triage.toLowerCase()}`}>{patient.triage}</td>
-                <td>{patient.name}</td>
-                <td>{patient.bed}</td>
-                <td>
-                  {patient.status} <br />
-                  <small>{patient.lastUpdated ? `Updated: ${patient.lastUpdated}` : ""}</small>
+            <tr>
+              <td colSpan="5">Loading...</td>
+            </tr>
+          </tbody>
+        ) : (
+          <tbody>
+            {patientAdmissions?.content?.map((item) => (
+              <tr key={item.id}>
+                <td className='text-black'>{item.id}</td>
+                <td className='text-black'>
+                  <span className={"badge badge-solid " + 
+                    (item.patientTriage === 1 ? 'badge-error' 
+                      : item.patientTriage === 2 ? 'badge-warning'
+                      : item.patientTriage === 3 ? '!bg-yellow-200'
+                      : item.patientTriage === 4 ? 'badge-success'
+                      : item.patientTriage === 5 ? 'badge-accent'
+                      : 'badge-neutral')
+                  }> {item.patientTriage} </span>
                 </td>
-                <td>
-                  <button onClick={() => openDetailsModal(index)} className="smaller-update-button">Details</button>
-                  <button onClick={() => openUpdateModal(index)} className="smaller-update-button">Update</button>
-                  <button onClick={() => setPatients(patients.filter((_, i) => i !== index))} className="smaller-update-button">Delete</button>
+                
+                <td className='text-black'>{item.patientName}</td>
+                <td className='text-black'>{item.patientBedLocCode}</td>
+                <td className='text-black'>
+                  <span className={"badge badge-solid " + 
+                    (item.patientStatus === 'pre-admission' ? 'badge-warning'
+                      : item.patientStatus === 'in-surgery' ? 'badge-error'
+                      : item.patientStatus === 'admitted-ER' ? 'badge-success'
+                      : item.patientStatus.includes('pending-pay') ? 'badge-accent'
+                      : (item.patientStatus === 'paid' || item.patientStatus === 'collateralized') ? 'badge-info'
+                      : 'badge-neutral')
+                  }> {item.patientStatus} </span>
+
+                </td>
+                <td className='text-black flex justify-center'>
+                  <button type="button" onClick={() => showUpdateModal(item.id)} className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit'>
+                    <span className="icon-[tabler--pencil] text-neutral-500"></span>
+                  </button>
                 </td>
               </tr>
             ))}
           </tbody>
-        </table>
-      </div>
-
-      {/* Add Patient Modal */}
-      {showAddModal && (
-        <div className="modal-overlay" onClick={closeAddModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>New Patient</h2>
-            <label>Name: <input type="text" value={newPatient.name} onChange={(e) => setNewPatient({ ...newPatient, name: e.target.value })} /></label>
-            <label>Triage:
-              <select value={newPatient.triage} onChange={(e) => setNewPatient({ ...newPatient, triage: e.target.value })}>
-                <option value="C">Critical</option>
-                <option value="H">High</option>
-                <option value="M">Moderate</option>
-                <option value="L">Low</option>
-              </select>
-            </label>
-            <label>Bed:
-              <select value={newPatient.bed} onChange={(e) => setNewPatient({ ...newPatient, bed: e.target.value })}>
-                <option value="Bed 01">Bed 01</option>
-                <option value="Bed 02">Bed 02</option>
-                <option value="Bed 03">Bed 03</option>
-              </select>
-            </label>
-            <div className="form-actions">
-              <button onClick={closeAddModal}>Cancel</button>
-              <button onClick={handleAddPatient}>Add Patient</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-
-     {/* Update Status Modal */}
-{showUpdateModal && (
-  <div className="modal-overlay" onClick={closeUpdateModal}>
-    <div className="modal" onClick={(e) => e.stopPropagation()}>
-      <h2>Update Patient</h2>
-
-      {/* Update Status Section */}
-      <label>
-        Status:
-        <select
-          value={statusUpdate}
-          onChange={(e) => setStatusUpdate(e.target.value)}
-        >
-          <option value="Waiting for Assessment">Waiting for Assessment</option>
-          <option value="In Treatment">In Treatment</option>
-          <option value="Under Observation">Under Observation</option>
-          <option value="Pending Test Results">Pending Test Results</option>
-          <option value="Ready for Discharge">Ready for Discharge</option>
-          <option value="Deceased">Deceased</option>
-        </select>
-      </label>
-      <button onClick={handleStatusUpdate} className="smaller-update-button">
-        Update Status
-      </button>
-
-      {/* Update/View Treatments Section */}
-      <h3>Treatments Ordered</h3>
-      <div className="treatments-section">
-        <input
-          type="text"
-          placeholder="Enter treatment"
-          value={treatmentsOrdered}
-          onChange={(e) => setTreatmentsOrdered(e.target.value)}
-        />
-        <button
-          onClick={handleAddTreatment}
-          className="smaller-update-button"
-        >
-          Add Treatment
-        </button>
-      </div>
-      <ul>
-        {patients[selectedPatientIndex]?.treatments?.map((treatment, idx) => (
-          <li key={idx}>{treatment}</li>
-        ))}
-      </ul>
-
-      {/* Patient Logs Section */}
-      <h3>Patient Logs</h3>
-      <ul>
-        {patients[selectedPatientIndex]?.logs?.map((log, idx) => (
-          <li key={idx}>
-            <strong>{log.time}</strong>: {log.action}
-          </li>
-        ))}
-      </ul>
-
-      <button onClick={closeUpdateModal} className="smaller-update-button">
-        Close
-      </button>
-    </div>
-  </div>
-)}
-
-
-      {/* Patient Details Modal */}
-     {/* Patient Details Modal */}
-{showDetailsModal && (
-  <div className="modal-overlay" onClick={closeDetailsModal}>
-    <div className="modal" onClick={(e) => e.stopPropagation()}>
-      <h2>
-        {formMode === "PatientDetails"
-          ? "Patient Information"
-          : formMode === "PhilHealthForm"
-          ? "PhilHealth Form"
-          : "HMO Details"}
-      </h2>
-
-      {/* Shared Fields */}
-      <label>
-        Full Name:
-        <input
-          type="text"
-          value={patientDetails.fullName}
-          onChange={(e) =>
-            setPatientDetails({ ...patientDetails, fullName: e.target.value })
-          }
-        />
-      </label>
-      <label>
-        Date of Birth:
-        <input
-          type="date"
-          value={patientDetails.dob}
-          onChange={(e) =>
-            setPatientDetails({ ...patientDetails, dob: e.target.value })
-          }
-        />
-      </label>
-      <label>
-        Address:
-        <input
-          type="text"
-          value={patientDetails.address}
-          onChange={(e) =>
-            setPatientDetails({ ...patientDetails, address: e.target.value })
-          }
-        />
-      </label>
-      <label>
-        Contact Number:
-        <input
-          type="text"
-          value={patientDetails.contactNumber}
-          onChange={(e) =>
-            setPatientDetails({
-              ...patientDetails,
-              contactNumber: e.target.value,
-            })
-          }
-        />
-      </label>
-
-      {/* Mode-Specific Fields */}
-      {formMode === "PhilHealthForm" && (
-        <>
-          <label>
-            Height:
-            <input
-              type="text"
-              value={patientDetails.height || ""}
-              onChange={(e) =>
-                setPatientDetails({
-                  ...patientDetails,
-                  height: e.target.value,
-                })
-              }
-            />
-          </label>
-          <label>
-            Weight:
-            <input
-              type="text"
-              value={patientDetails.weight || ""}
-              onChange={(e) =>
-                setPatientDetails({
-                  ...patientDetails,
-                  weight: e.target.value,
-                })
-              }
-            />
-          </label>
-          <label>
-            Allergies:
-            <input
-              type="text"
-              value={patientDetails.allergies || ""}
-              onChange={(e) =>
-                setPatientDetails({
-                  ...patientDetails,
-                  allergies: e.target.value,
-                })
-              }
-            />
-          </label>
-          <label>
-            Comorbidity:
-            <input
-              type="text"
-              value={patientDetails.comorbidity || ""}
-              onChange={(e) =>
-                setPatientDetails({
-                  ...patientDetails,
-                  comorbidity: e.target.value,
-                })
-              }
-            />
-          </label>
-          <label>
-            Surgeries/Hospitalization History:
-            <input
-              type="text"
-              value={patientDetails.surgeriesHistory || ""}
-              onChange={(e) =>
-                setPatientDetails({
-                  ...patientDetails,
-                  surgeriesHistory: e.target.value,
-                })
-              }
-            />
-          </label>
-          <label>
-            COVID Vaccine:
-            <select
-              value={patientDetails.covidVaccine || "No"}
-              onChange={(e) =>
-                setPatientDetails({
-                  ...patientDetails,
-                  covidVaccine: e.target.value,
-                })
-              }
+        )}
+      </table>
+      {/* Pagination Controls */}
+      {
+        !loading && patientAdmissions?.pageable ? (
+          <div className="pagination-controls">
+            <button 
+              onClick={PreviousPage} 
+              disabled={currentPage === 0}
             >
-              <option value="Yes">Yes</option>
-              <option value="No">No</option>
-            </select>
-          </label>
-        </>
-      )}
-
-      {formMode === "HMO" && (
-        <>
-          <label>
-            HMO Provider:
-            <input
-              type="text"
-              value={patientDetails.hmoProvider || ""}
-              onChange={(e) =>
-                setPatientDetails({
-                  ...patientDetails,
-                  hmoProvider: e.target.value,
-                })
-              }
-            />
-          </label>
-          <label>
-            HMO ID:
-            <input
-              type="text"
-              value={patientDetails.hmoId || ""}
-              onChange={(e) =>
-                setPatientDetails({
-                  ...patientDetails,
-                  hmoId: e.target.value,
-                })
-              }
-            />
-          </label>
-          <label>
-            HMO Account Owner Name:
-            <input
-              type="text"
-              value={patientDetails.hmoOwner || ""}
-              onChange={(e) =>
-                setPatientDetails({
-                  ...patientDetails,
-                  hmoOwner: e.target.value,
-                })
-              }
-            />
-          </label>
-        </>
-      )}
-
-      {/* Footer Buttons */}
-      <div className="form-actions">
-        <button
-          onClick={() => setFormMode("PatientDetails")}
-          className={`smaller-update-button ${
-            formMode === "PatientDetails" ? "active" : ""
-          }`}
-        >
-          Patient Details
-        </button>
-        <button
-          onClick={() => setFormMode("PhilHealthForm")}
-          className={`smaller-update-button ${
-            formMode === "PhilHealthForm" ? "active" : ""
-          }`}
-        >
-          PhilHealth Form
-        </button>
-        <button
-          onClick={() => setFormMode("HMO")}
-          className={`smaller-update-button ${
-            formMode === "HMO" ? "active" : ""
-          }`}
-        >
-          HMO
-        </button>
-        <button className="smaller-update-button">Print</button>
-        <button onClick={closeDetailsModal} className="smaller-update-button">
-          Cancel
-        </button>
-        <button onClick={handleSaveDetails} className="smaller-update-button">
-          Save
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+              Previous
+            </button>
+            <span className='text-black'>
+              Page {currentPage + 1} of {patientAdmissions.totalPages}
+            </span>
+            <button 
+              onClick={NextPage} 
+              disabled={currentPage === patientAdmissions.totalPages}
+            >
+              Next
+            </button>
+          </div>
+        ) : null
+      }
 
     </div>
   );
 };
 
-export default EmergencyRoom;
+function Modal({ id, closeModal, refreshTable, showAssignPatientIDModal }) {
+  const { serverUrl } = useConfig();
+  const [loading, setLoading] = useState(false)
+  const [model, setModel] = useState({});
+  const [errors, setErrors] = useState({});
+
+  const validateModel = () => {
+    const foundErrors = validateAdmissionModel(model);
+    setErrors(foundErrors);
+    return Object.keys(foundErrors).length === 0;
+  };
+
+  const FetchTable = () => {
+    if (!serverUrl) return;
+    setLoading(true)
+    secureFetch(`${serverUrl}/patient-admissions/${id}`, 
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+    })
+    .then(response => response.json())
+    .then(data => setModel(data))
+    .catch(error => console.error(error)).
+    finally(() => {
+      setLoading(false)
+    })
+  }
+
+  const UpdateModel = () => {
+    if (!serverUrl) return;
+    console.log(`!validateModel(): ${!validateModel()}`)
+    console.log(errors)
+    if (!validateModel()) return;
+    setLoading(true)
+
+    const payload = {
+      id: model.id,
+      patientID: model.patientID,
+      patientName: model.patientName,
+      patientTriage: model.patientTriage,
+      patientStatus: model.patientStatus,
+      patientBedLocCode: model.patientBedLocCode,
+      patientAdmitOn: model.patientAdmitOn,
+      patientOutOn: model.patientOutOn,
+      patientERCause: model.patientERCause,
+    };
+
+    secureFetch(`${serverUrl}/patient-admissions/admission/${id}`, 
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    })
+    .then(async (response) => {
+      const responseBody = await response.json()
+      console.log(response)
+      if(response.status !== 200) {
+        console.log(responseBody);
+        const errorString = responseBody.map((error) => error.message).join('\n');
+        alert(errorString);
+      } else {        
+        refreshTable();
+        closeModal();
+      }
+    })
+    .catch(error => console.error(error)).
+    finally(() => {
+      setLoading(false)
+    })
+  }
+
+  useEffect(() => {
+    FetchTable();
+  }, [id]);
+
+  return (
+    <div className='qe-modal-overlay'>      
+        { loading ? (
+          <span>Loading...</span>
+          ) : (
+            <div className="qe-modal gap-4 !w-fit !max-w-fit" style={{ display: 'flex' }}>   
+              <h4 className="text-2xl mb-2">Admission No. {model.id}</h4>
+              
+              <div className='w-full gap-4 flex'>
+                <label className="input-group w-full max-w-full">
+                  <span className="input-group-text font-bold uppercase text-nowrap">Patient ID</span>
+                  <input type="text" className="input grow !text-black" value={model.patientID || ""} disabled readOnly/>
+                </label>
+                
+                <label className="input-group w-full max-w-full">
+                  <span className="input-group-text font-bold uppercase text-nowrap">Triage</span>
+                  <select className="select grow !text-black" value={model.patientTriage}
+                  onChange={(e) => setModel((prev) => ({
+                    ...prev,
+                    patientTriage: parseInt(e.target.value)
+                  }))}
+                  disabled={isPatientOutOfER(model.patientStatus)} readOnly={isPatientOutOfER(model.patientStatus)} >
+                    <option value=''>Select a triage level</option>
+                    <option value='1'>1</option>
+                    <option value='2'>2</option>
+                    <option value='3'>3</option>
+                    <option value='4'>4</option>
+                    <option value='5'>5</option>
+                  </select>
+                </label>
+              </div>
+                
+              <label className="input-group w-full max-w-full">
+                <span className="input-group-text font-bold uppercase text-nowrap">Name</span>
+                <input type="text" className="input grow !text-black" value={model.patientName} 
+                onChange={(e) => setModel((prev) => ({
+                  ...prev,
+                  patientName: e.target.value
+                }))}
+                disabled={isPatientOutOfER(model.patientStatus)} readOnly={isPatientOutOfER(model.patientStatus)} />
+              </label>
+
+              <div className='w-full gap-4 flex'>
+                <label className="input-group w-full max-w-full">
+                  <span className="input-group-text font-bold uppercase text-nowrap">Bed Location Code</span>
+                  <input type="text" className="input grow !text-black" value={model.patientBedLocCode} 
+                  onChange={(e) => setModel((prev) => ({
+                    ...prev,
+                    patientBedLocCode: e.target.value
+                  }))}
+                  disabled={isPatientOutOfER(model.patientStatus)} readOnly={isPatientOutOfER(model.patientStatus)} />
+                </label>
+                <label className="input-group w-full max-w-full">
+                  <span className="input-group-text font-bold uppercase text-nowrap">Status</span>
+                  {isPatientOutOfER(model.patientStatus) ? (
+                    <input
+                      className="input grow !text-black"
+                      value={model.patientStatus}
+                      disabled
+                      readOnly
+                    />
+                  ) : (
+                    <select
+                      className="select grow !text-black"
+                      value={model.patientStatus}
+                      onChange={(e) => {
+                        // Handle the change here
+                        console.log(e.target.value);
+                      }}
+                    >
+                      <option value="">Select a status</option>
+                      <option value="pre-admission">Pre-admission</option>
+                      <option value="in-surgery">Under Surgery</option>
+                      <option value="admitted-ER">Admitted to ER</option>
+                      <option value="pending-pay-to-discharge">Pending Pay for Discharge</option>
+                      <option value="pending-pay-to-transfer">Pending Pay for Transfer</option>
+                      <option value="to-morgue">Deceased (To Morgue)</option>
+                      <option value="to-ward">To Hospital Ward</option>
+                    </select>
+                  )}
+                </label>
+              </div>
+
+              <div className='w-full gap-4 flex'>
+                <label className="input-group w-full max-w-full">
+                  <span className="input-group-text font-bold uppercase text-nowrap">Admitted On</span>
+                  <input type="datetime-local" className="input grow !text-black" value={formateDateForInputDateTime (model.patientAdmitOn) || ""} disabled readOnly/>
+                </label>
+                
+                <label className="input-group w-full max-w-full">
+                  <span className="input-group-text font-bold uppercase text-nowrap">Discharged/Transferred On</span>
+                  <input type="datetime-local" className="input grow !text-black" value={formateDateForInputDateTime (model.patientOutOn) || ""} disabled readOnly/>
+                </label>
+              </div>
+                
+              <label className="input-group w-full max-w-full">
+                <span className="input-group-text font-bold uppercase text-nowrap">ER Admission Cause</span>
+                <input type="text" className="input grow !text-black" value={model.patientERCause}
+                onChange={(e) => setModel((prev) => ({
+                  ...prev,
+                  patientERCause: e.target.value
+                }))}
+                disabled={isPatientOutOfER(model.patientStatus)} readOnly={isPatientOutOfER(model.patientStatus)} />
+              </label>
+              {
+                !model.patientID &&
+                <button onClick={() => showAssignPatientIDModal(model.id)} className="btn btn-primary">Assign Patient ID</button>
+              }
+              {
+                !isPatientOutOfER(model.patientStatus) &&
+                <button onClick={UpdateModel} className="btn btn-primary">Update</button>
+              }
+              <button onClick={closeModal} className="btn btn-secondary">Close</button>
+            </div>
+        )}
+    </div>
+  );
+};
+
+function PatientRecordModal( {admissionID, patientID, closeModal} ) {
+  const { serverUrl } = useConfig();
+  const [loading, setLoading] = useState(false)
+  const [model, setModel] = useState({});
+  const [admissionModel, setAdmissionModel] = useState({});
+  const [errors, setErrors] = useState({});
+  
+  const validateModel = () => {
+    const foundErrors = validatePatientModel(model);
+    setErrors(foundErrors);
+    return Object.keys(foundErrors).length === 0;
+  };
+  console.log(patientID)
+
+  const FetchTable = () => {
+    if (!serverUrl) return;
+    setLoading(true)
+    secureFetch(`${serverUrl}/patients/${(patientID)}`, 
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+    })
+    .then(response => response.json())
+    .then(data => setModel(data))
+    .catch(error => console.error(error)).
+    finally(() => {
+      setLoading(false)
+    })
+  }
+
+  const UpdateModel = () => {
+    if (!serverUrl) return;
+    if (!validateModel()) return;
+    setLoading(true)
+
+    const patientPayload = { 
+      id: model.id,
+      patientFullName: model.patientFullName,
+      patientGender: model.patientGender,
+      patientDOB: ensureDateIsInstantSerializable(model.patientDOB),
+      patientAddress: model.patientAddress,
+      patientContactNum: model.patientContactNum,
+      patientEmergencyContactName: model.patientEmergencyContactName,
+      patientEmergencyContactNum: model.patientEmergencyContactNum,
+      patientPWDID: model.patientPWDID,
+      patientSeniorID: model.patientSeniorID
+    };
+    
+    secureFetch(`${serverUrl}/patients/patient/${patientID}`, 
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+      body: JSON.stringify(patientPayload)
+    })
+    .then(async (response) => {
+      const responseBody = await response.json()
+      console.log(response)
+      if(response.status !== 200) {
+        console.log(responseBody);
+        const errorString = responseBody.map((error) => error.message).join('\n');
+        alert(errorString);
+      } else {
+        alert(`Successfully updated Patient Record`);
+        updateAdmissionPatientID();
+      }
+    })
+    .catch(error => console.error(error)).
+    finally(() => {
+      setLoading(false)
+    })
+
+  };
+
+  const updateAdmissionPatientID = () => {  
+    const admissionPayload = {
+      id: admissionID,
+      patientID: patientID,
+      patientName: null,
+      patientTriage: null,
+      patientStatus: null,
+      patientBedLocCode: null,
+      patientAdmitOn: null,
+      patientOutOn: null,
+      patientERCause: null
+    };
+    secureFetch(`${serverUrl}/patient-admissions/admission/patientID/${admissionID}`, 
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include',
+        body: JSON.stringify(admissionPayload)
+      })
+      .then(async (response) => {
+        const responseBody = await response.json()
+        console.log(response)
+        if(response.status !== 200) {
+          console.log(responseBody);
+          const errorString = responseBody.map((error) => error.message).join('\n');
+          alert(errorString);
+        } else {        
+          alert(`Successfully assigned Patient Record No. ${patientID} to Admission No. ${admissionID}`);
+          closeModal();
+        }
+      })
+      .catch(error => console.error(error)).
+      finally(() => {
+        setLoading(false)
+      })
+  }
+
+  useEffect(() => {
+    FetchTable();
+  }, [patientID]);
+
+  return (
+    <div className='qe-modal-overlay'>   
+      { loading ? (
+          <span>Loading...</span>
+          ) : (
+            <div className="qe-modal gap-4 !w-fit !max-w-fit" style={{ display: 'flex' }}>   
+              <h4 className="text-2xl mb-2">Patient No. {patientID}</h4>
+
+              <label className="input-group w-full max-w-full">
+                <span className="input-group-text font-bold uppercase text-nowrap">Full Name</span>
+                <input type="text" className="input grow !text-black" value={model.patientFullName || ""} 
+                onChange={e => setModel((prev) => ({
+                  ...prev,
+                  patientFullName: e.target.value
+                }))}/>
+              </label>
+              
+              <div className='w-full gap-4 flex'>
+                <label className="input-group w-full max-w-full">
+                  <span className="input-group-text font-bold uppercase text-nowrap">Gender</span>
+                  <input type="text" className="input grow !text-black" value={model.patientGender || ""} 
+                  onChange={e => setModel((prev) => ({
+                    ...prev,
+                    patientGender: e.target.value
+                  }))}/>
+                </label>
+
+                <label className="input-group w-full max-w-full">
+                  <span className="input-group-text font-bold uppercase text-nowrap">Birthdate</span>
+                  <input type="date" className="input grow !text-black" value={formatDateForInputDate (model.patientDOB) || ""} 
+                  onChange={e => setModel((prev) => ({
+                    ...prev,
+                    patientDOB: e.target.value
+                  }))}/>
+                </label>
+              </div>
+
+              <label className="input-group w-full max-w-full">
+                <span className="input-group-text font-bold uppercase text-nowrap">Address</span>
+                <input type="text" className="input grow !text-black" value={model.patientAddress || ""} 
+                  onChange={e => setModel((prev) => ({
+                    ...prev,
+                    patientAddress: e.target.value
+                  }))}/>
+              </label>
+
+              <label className="input-group w-full max-w-full">
+                <span className="input-group-text font-bold uppercase text-nowrap">Contact Number</span>
+                <input type="text" className="input grow !text-black" value={model.patientContactNum || ""} 
+                  onChange={e => setModel((prev) => ({
+                    ...prev,
+                    patientContactNum: e.target.value
+                  }))}/>
+              </label>
+              
+              <div className='w-full gap-4 flex'>
+                <label className="input-group w-full max-w-full">
+                  <span className="input-group-text font-bold uppercase text-nowrap">Emergency Contact</span>
+                  <input type="text" className="input grow !text-black" value={model.patientEmergencyContactName || ""} 
+                  onChange={e => setModel((prev) => ({
+                    ...prev,
+                    patientEmergencyContactName: e.target.value
+                  }))}/>
+                </label>
+
+                <label className="input-group w-full max-w-full">
+                  <span className="input-group-text font-bold uppercase text-nowrap">Emergency Contact Number</span>
+                  <input type="text" className="input grow !text-black" value={model.patientEmergencyContactNum || ""} 
+                  onChange={e => setModel((prev) => ({
+                    ...prev,
+                    patientEmergencyContactNum: e.target.value
+                  }))}/>
+                </label>
+              </div>
+              
+              <div className='w-full gap-4 flex'>
+                <label className="input-group w-full max-w-full">
+                  <span className="input-group-text font-bold uppercase text-nowrap">PWD ID</span>
+                  <input type="text" className="input grow !text-black" value={model.patientPWDID || ""} 
+                  onChange={e => setModel((prev) => ({
+                    ...prev,
+                    patientPWDID: e.target.value
+                  }))}/>
+                </label>
+
+                <label className="input-group w-full max-w-full">
+                  <span className="input-group-text font-bold uppercase text-nowrap">Senior Citizen ID</span>
+                  <input type="text" className="input grow !text-black" value={model.patientSeniorID || ""} 
+                  onChange={e => setModel((prev) => ({
+                    ...prev,
+                    patientSeniorID: e.target.value
+                  }))}/>
+                </label>
+              </div>
+              
+              <button onClick={UpdateModel} className="btn btn-primary">Update then Assign this Patient Record to Admission No. {admissionID}</button>
+              <button onClick={closeModal} className="btn btn-secondary">Close</button>
+            </div>
+      )}
+    </div>
+  )
+
+
+}
+
+function AssignPatientIDModal( {admissionID, closeModal, refreshTable, showAssignPatientIDModal} ) {
+  const { serverUrl } = useConfig();
+  const [loading, setLoading] = useState(false)
+  const [patients, setPatients] = useState({});
+  const [query, setQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+
+  const FetchPatients = () => {
+    if (!serverUrl) return;
+    setLoading(true)
+    secureFetch(`${serverUrl}/patients/search?` + new URLSearchParams({
+      query: query,
+      page: currentPage,
+      size: itemsPerPage
+    }).toString(), 
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+    })
+    .then(response => response.json())
+    .then(data => {
+      setPatients(data)
+      console.log(data)
+    })
+    .catch(error => console.error(error)).
+    finally(() => {
+      setLoading(false)
+    })
+  }
+
+  useEffect(() => {
+    FetchPatients();
+  }
+  , [query, currentPage, itemsPerPage, serverUrl]);
+
+  const NextPage = () => {
+    if (currentPage < patients.totalPages - 1) {
+      setCurrentPage(currentPage + 1);
+    }
+  }
+
+  const PreviousPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1);
+    }
+  }
+
+  const PatientSearch = () => {
+    console.log(document.getElementById('patientSearchInput').value)
+    setQuery(document.getElementById('patientSearchInput').value);
+    setCurrentPage(0);
+  }
+
+  return (
+    <div className='qe-modal-overlay'>     
+    { loading ? (
+      <span>Loading...</span>
+      ) : (
+        <div className="qe-modal gap-4 !w-fit !max-w-fit flex">
+          <div className="inventory-container">
+            <h4 className="text-2xl mb-2">Select Patient Record for Admission No. {admissionID}</h4>
+            {/* Search Bar */}
+              <div className='flex gap-4'>
+                <input
+                  type="text"
+                  className="w-full "
+                  id="patientSearchInput"
+                  placeholder="Search Patient Records"
+                  defaultValue={query}
+                />
+                <button onClick={PatientSearch} className="btn btn-primary h-full !px-8">Search</button>
+              </div>
+
+            {/* Patient Table */}
+            <table>
+              <thead>
+                <tr>
+                  <th>id</th>
+                  <th>FullName</th>
+                  <th>Gender</th>
+                  <th>Birth Date</th>
+                  <th>Address</th>
+                  <th className='!text-center'>Actions</th>
+                </tr>
+              </thead>
+              {loading ? (
+                <tbody>
+                  <tr>
+                    <td colSpan="5">Loading...</td>
+                  </tr>
+                </tbody>
+              ) : (
+                <tbody>
+                  {patients?.content?.map((item) => (
+                    <tr key={item.id}>
+                      <td className='text-black'>{item.id}</td>
+                      <td className='text-black'>{item.patientFullName}</td>
+                      <td className='text-black'>{item.patientGender}</td>
+                      <td className='text-black'>{formateDateForString(item.patientDOB)}</td>
+                      <td className='text-black'>{truncateLongStr(item.patientAddress, 15)}</td>
+                      <td className='text-black flex justify-center'>
+                        <button type="button" className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit'> {/*onClick={() => showUpdateModal(item.id)} */}
+                          <span onClick={() => showAssignPatientIDModal(item.id)} className="text-neutral-500">Details</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              )}
+            </table>
+            {/* Pagination Controls */}
+            {
+              !loading && patients?.pageable ? (
+                <div className="pagination-controls">
+                  <button 
+                    onClick={PreviousPage} 
+                    disabled={currentPage === 0}
+                  >
+                    Previous
+                  </button>
+                  <span className='text-black'>
+                    Page {currentPage + 1} of {patients.totalPages}
+                  </span>
+                  <button 
+                    onClick={NextPage} 
+                    disabled={currentPage === patients.totalPages}
+                  >
+                    Next
+                  </button>
+                </div>
+              ) : null
+            }
+
+            </div>
+            <button className="btn btn-primary">No Record Found? Create New One</button>
+          <button onClick={closeModal} className="btn btn-secondary">Close</button>
+        </div>
+      )
+    }
+    </div>
+  )
+}
+
+function validateAdmissionModel(model) {
+  const foundErrors = {};
+  console.log(model)
+  if (!model.patientName) {
+    foundErrors.patientName = 'Name is required';
+  } 
+  if (!model.patientTriage) {
+    foundErrors.patientTriage = 'Triage is required';
+  } 
+  if (!model.patientStatus) {
+    foundErrors.patientStatus = 'Status is required';
+  } 
+  if (!model.patientBedLocCode) {
+    foundErrors.patientBedLocCode = 'Bed Location Code is required';
+  } 
+  if (!model.patientERCause) {
+    foundErrors.patientERCause = 'Cause of admission is required';
+  } 
+  return foundErrors;
+}
+
+function validatePatientModel(model) {
+  const foundErrors = {};
+  if (!model.patientFullName) {
+    foundErrors.patientFullName = 'Name is required';
+  }
+  if (!model.patientGender) {
+    foundErrors.patientGender = 'Gender is required';
+  }
+  return foundErrors;
+}
+
+function Sidebar() {
+  const navigate = useNavigate();
+  const [showModal, setShowModal] = useState(false); // State for modal visibility
+  const { user, loading  } = useUser();
+  const [isUserLoaded, setIsUserLoaded] = useState(false);
+
+  useEffect(() => {
+    if (user || loading === false) {
+      setIsUserLoaded(true);
+    }
+  }, [user, loading]);
+
+  if (loading || !isUserLoaded) {
+    return <div>Loading...</div>; 
+  }
+
+  const handleLogout = () => {
+    setShowModal(false); // Close modal
+    window.location.href = '/logout'; // Navigate to the login page
+  };
+// Sidebar Component
+return (
+  <div className="emergency-room-container">
+    <aside className="sidebar">
+    <img src={quicker} onClick={() => navigate('/menu')} alt="Quicker Logo" className="logo cursor-pointer" />
+      <ul className="nav-menu">
+        {(user.role == "ADMIN" || user.role == "STAFF") &&
+          <li className="nav-menu-item active" onClick={() => navigate('/emergency')}>Emergency Room</li>
+        }
+        {(user.role == "ADMIN" || user.role == "INVENTORYSTAFF") &&
+          <li className="nav-menu-item" onClick={() => navigate('/inventory')}>Inventory</li>
+        }
+        {(user.role == "ADMIN" || user.role == "INVENTORYSTAFF") &&
+          <li className="nav-menu-item" onClick={() => navigate('/beds')}>Bed Management</li>
+        }        
+        {(user.role == "ADMIN" || user.role == "STAFF") &&
+          <li className="nav-menu-item" onClick={() => navigate('/billing')}>Billing</li>
+        }
+        <li className="nav-menu-item" onClick={() => setShowModal(true)}>Log-out</li>
+      </ul>
+
+      {/* Log-out Confirmation Modal */}
+      {showModal && (
+        <div className="qe-modal-overlay">
+          <div className="qe-modal !w-auto flex flex-col gap-4">
+            <h4 className="text-2xl">Confirm Log-out</h4>
+            <p>Are you sure you want to log out?</p>
+            <div className="flex gap-4 justify-end">              
+              <button onClick={() => setShowModal(false)} className="btn">Cancel</button>
+              <button onClick={handleLogout} className="btn">Yes</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </aside>
+  </div>
+);
+}
+  
+const formateDateForInputDateTime  = (dateStr) => {
+  if (dateStr == null) return null;
+  const [yyyy,mm,dd,hh,mi] = dateStr.split(/[/:\-T]/);
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}`; 
+};
+
+const formatDateForInputDate = (dateStr) => { 
+  if (dateStr == null) return null;
+  const [yyyy, mm, dd] = dateStr.split(/[/:\-T]/);
+  return `${yyyy}-${mm}-${dd}`; 
+};
+
+const formateDateForString = (dateStr) => {
+  const date = new Date(dateStr);
+  const formattedDate = new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }).format(date);
+  return formattedDate;
+}
+
+const ensureDateIsInstantSerializable = (dateStr) => {
+  if (!dateStr) return null;
+   // Check if the date is already in the format "YYYY-MM-DDTHH:mm:ssZ"
+   const isoInstantRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
+   if (isoInstantRegex.test(dateStr)) {
+     return dateStr;
+   }
+  return `${dateStr}T00:00:00Z`;
+}
+
+const truncateLongStr = (str, n) => {
+  return (str.length > n) ? str.slice(0, n-1) + "\u2026" : str;
+}
+
+const isPatientOutOfER = (status) => {
+  return status === "paid" || status === "collateralized" || 
+         status === "discharged" || status === "admitted-to-ward" || status?.includes("transferred");
+}
+
+// App Component (Main Entry Point)
+function App() {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [assignPatientIDModalVisible, setAssignPatientIDModalVisible] = useState(false);
+  const [patientIDModalVisible, setPatientIDModalVisible] = useState(false);
+  const [currentItemID, setCurrentItemID] = useState(null);
+  const [patientID, setPatientID] = useState(null);
+  
+  const { serverUrl } = useConfig();
+  const [patientAdmissions, setPatientAdmissions] = useState({});
+  const [query, setQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(6);
+  const [loading, setLoading] = useState(false);
+
+  const FetchPatientAdmissions = () => {
+    if (!serverUrl) return;
+    setLoading(true)
+    secureFetch(`${serverUrl}/patient-admissions/search?` + new URLSearchParams({
+      query: query,
+      page: currentPage,
+      size: itemsPerPage
+    }).toString(), 
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+    })
+    .then(response => response.json())
+    .then(data => {
+      setPatientAdmissions(data)
+      console.log(data)
+    })
+    .catch(error => console.error(error)).
+    finally(() => {
+      setLoading(false)
+    })
+  }
+  
+  useEffect(() => {
+    FetchPatientAdmissions();
+  }, [query, currentPage, itemsPerPage, serverUrl]);
+
+  const showUpdateModal = (item) => {
+    console.log('showUpdateModal', item);
+    setCurrentItemID(item);
+    setModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
+  };
+
+  const showAssignPatientIDModal = (item) => {
+    console.log('showAssignPatientIDModal', item);
+    setCurrentItemID(item);
+    setAssignPatientIDModalVisible(true);
+    closeModal();
+  };
+
+  const closeAssignPatientIDModal = () => {
+    setAssignPatientIDModalVisible(false);
+  };
+
+  const showPatientIDModal = (item) => {
+    console.log('showAssignPatientIDModal', item);
+    setPatientID(item);
+    setPatientIDModalVisible(true);
+    closeAssignPatientIDModal();
+  }
+
+  const closePatientIDModal = () => {
+    setPatientIDModalVisible(false);
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'row', height: '100vh', position: 'relative' }}>
+      <Sidebar />
+      <div className="main-container">
+        <div className="content-container">
+          {/* Inventory */}
+          <Admissions
+            showUpdateModal={showUpdateModal}
+            patientAdmissions={patientAdmissions}
+            loading={loading}
+            FetchPatientAdmissions={FetchPatientAdmissions}
+            setQuery={setQuery}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            itemsPerPage={itemsPerPage}
+          />
+        </div>
+
+        {/* Add Item Below Inventory */}
+        <AddItem          
+          refreshAdmissions={FetchPatientAdmissions} />
+      </div>
+
+      {/* Modal for Quantity Input */}
+      {modalVisible && (currentItemID !== null) && (
+        <Modal
+          id={currentItemID}
+          closeModal={closeModal}
+          refreshTable={FetchPatientAdmissions}
+          showAssignPatientIDModal={showAssignPatientIDModal}
+        />
+      )}
+
+      {/* Modal for Assign Patient ID */}
+      {assignPatientIDModalVisible && (currentItemID !== null) && (
+        <AssignPatientIDModal
+          admissionID={currentItemID}
+          closeModal={closeAssignPatientIDModal}
+          refreshTable={FetchPatientAdmissions}
+          showAssignPatientIDModal={showPatientIDModal}
+        />
+      )}
+
+      {/* Modal for Patient ID */}
+      {patientIDModalVisible && (currentItemID !== null) && (patientID !== null) && (
+        <PatientRecordModal
+          admissionID={currentItemID}
+          patientID={patientID}
+          closeModal={closePatientIDModal}
+        />
+      )}
+      
+
+    </div>
+  );
+};
+
+export default App;
