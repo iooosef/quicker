@@ -1,5 +1,5 @@
-1 - Immediate (Critical)
-2 - Emergent
-3 - Urgent
-4 - Semi-Urgent
-5 - Non-Urgent
+1 - Immediate (Critical)  RED
+2 - Emergent              ORANGE
+3 - Urgent                YELLOW
+4 - Semi-Urgent           GREEN
+5 - Non-Urgent            BLUE

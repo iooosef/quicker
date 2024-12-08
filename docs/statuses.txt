@@ -17,4 +17,4 @@
 "transferred-morgue"
 
 "to-ward"
-"transferred-ward"
+"admitted-to-ward"
