@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import './inventory.css'; 
 import quicker from "./assets/quicker.png";
 import { useNavigate } from 'react-router-dom';
 import { useConfig } from './util/ConfigContext';
 import { useUser } from './auth/UserContext';
 import secureFetch from './auth/SecureFetch';
+import Signature from '@lemonadejs/signature/dist/react';
 
 function AddItem({ refreshAdmissions }) {
   const { serverUrl } = useConfig();
@@ -331,11 +332,12 @@ function Admissions ({ showUpdateModal,
   );
 };
 
-function Modal({ id, closeModal, refreshTable, showAssignPatientIDModal }) {
+function Modal({ id, closeModal, refreshTable, showAssignPatientIDModal, showConsentModal }) {
   const { serverUrl } = useConfig();
   const [loading, setLoading] = useState(false)
   const [model, setModel] = useState({});
   const [errors, setErrors] = useState({});
+  const [hasConsent, setHasConsent] = useState(false);
 
   const validateModel = () => {
     const foundErrors = validateAdmissionModel(model);
@@ -343,7 +345,7 @@ function Modal({ id, closeModal, refreshTable, showAssignPatientIDModal }) {
     return Object.keys(foundErrors).length === 0;
   };
 
-  const FetchTable = () => {
+  const FetchAdmission = () => {
     if (!serverUrl) return;
     setLoading(true)
     secureFetch(`${serverUrl}/patient-admissions/${id}`, 
@@ -404,8 +406,34 @@ function Modal({ id, closeModal, refreshTable, showAssignPatientIDModal }) {
     })
   }
 
+  const admissionConsentExist = () => {    
+    if (!serverUrl) return;
+    setLoading(true);
+
+    secureFetch(`${serverUrl}/patient-consents/${id}?` + new URLSearchParams({
+      admissionId: id
+    }).toString(), 
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json"},
+      credentials: 'include'
+    })
+    .then(async (response) => {
+      if(response.status === 200) {
+        setHasConsent(true);
+      } else {        
+        setHasConsent(false);
+      }
+    })
+    .catch(error => console.error(error)).
+    finally(() => {
+      setLoading(false);
+    });
+  }
+
   useEffect(() => {
-    FetchTable();
+    FetchAdmission();
+    admissionConsentExist();
   }, [id]);
 
   return (
@@ -512,12 +540,13 @@ function Modal({ id, closeModal, refreshTable, showAssignPatientIDModal }) {
                 }))}
                 disabled={isPatientOutOfER(model.patientStatus)} readOnly={isPatientOutOfER(model.patientStatus)} />
               </label>
-              {
-                !model.patientID &&
-                <button onClick={() => showAssignPatientIDModal(model.id)} className="btn btn-primary">Assign Patient ID</button>
+              {!model.patientID &&
+                <button onClick={() => showAssignPatientIDModal(model.id)} className="btn btn-accent">Assign Patient ID</button>
               }
-              {
-                !isPatientOutOfER(model.patientStatus) &&
+              {model.patientID && !isPatientOutOfER(model.patientStatus) && !hasConsent &&
+                <button onClick={() => showConsentModal(model.id)} className="btn btn-accent">Sign Informed Consent</button>
+              }
+              {!isPatientOutOfER(model.patientStatus) &&
                 <button onClick={UpdateModel} className="btn btn-primary">Update</button>
               }
               <button onClick={closeModal} className="btn btn-secondary">Close</button>
@@ -1145,6 +1174,91 @@ function NewPatientModal( {admissionID, closeModal}) {
   )
 }
 
+function ConsentModal( {admissionID, closeModal} ) { 
+  const { serverUrl } = useConfig();
+  const [loading, setLoading] = useState(false)
+  const [model, setModel] = useState({});
+  const signatureRef = useRef(null);
+
+  const reset = function () {
+      signatureRef.current.value = [];
+  };
+
+  const AddConsent = () => {
+    if (!serverUrl) return;
+    setLoading(true);
+
+    const now = new Date().toISOString();
+
+    const payload = {
+      admissionID: admissionID,
+      consentSignedOn: now,
+      consentSignature: signatureRef.current.getImage().replace("data:image/png;base64,", "")
+    };
+
+    secureFetch(`${serverUrl}/patient-consents/patient-consent`, 
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      })
+      .then(async (response) => {
+        const responseBody = await response.json()
+        console.log(response)
+        if(response.status !== 200) {
+          console.log(responseBody);
+          const errorString = responseBody.map((error) => error.message).join('\n');
+          alert(errorString);
+        } else {
+          console.log(responseBody)
+          alert(`Signed Consent Form for Admission No. ${admissionID}`);
+          closeModal();
+        }
+      })
+      .catch(error => console.error(error)).
+      finally(() => {
+        setLoading(false)
+      });
+  }
+
+  return (
+    <div className='qe-modal-overlay'>   
+      { loading ? (
+          <span>Loading...</span>
+          ) : (
+            <div className="qe-modal gap-4 !w-full !max-w-2xl" style={{ display: 'flex' }}>   
+              <h4 className="text-2xl mb-2 text-nowrap">Informed Consent Form for Admission No. {admissionID}</h4>
+              <div>
+                <h5 className="text-base-content/90 text-lg font-semibold">Consent Placeholder Here</h5>
+                <p className="text-base-content/80 text-base">
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras congue nunc a dui porttitor, at dapibus lorem gravida. Aenean vestibulum nulla et nisl semper, sed ultricies ligula volutpat. Donec non dolor vel magna blandit tincidunt eget luctus quam. Duis ut placerat lorem. Praesent sagittis ipsum arcu, sed varius turpis tempor in. Mauris tellus arcu, egestas ut volutpat sit amet, mollis porttitor nibh. Pellentesque nec mauris dolor. Integer et placerat mi. Etiam tempus, enim in dapibus pellentesque, lectus tellus aliquam lacus, ut maximus felis ipsum vel eros. Nulla posuere imperdiet odio, nec fringilla magna. Sed rutrum, mi nec mollis ullamcorper, lorem tellus ultrices quam, sed dictum dui est vel dolor.
+                </p>
+              </div>
+              <div className='signature-area p-4 flex flex-col gap-4 justify-center bg-gray-300 rounded-lg'>
+                <h4 className='text-xl font-bold'>Signature Pad</h4>
+                <Signature
+                    ref={signatureRef}
+                    value={[]}
+                    width={580}
+                    height={120}
+                    instructions={"Please sign in the box above"}
+                />
+                <div className='flex gap-4'>
+                  <button onClick={reset} className="btn btn-secondary">Clear Signature Pad</button>
+                </div>
+              </div>
+              <button onClick={AddConsent} className="btn btn-primary">Sign Consent</button>
+              <button onClick={closeModal} className="btn btn-secondary">Close</button>
+            </div>
+          )
+      }
+    </div>
+  )
+
+}
+  
+
 function validateAdmissionModel(model) {
   const foundErrors = {};
   console.log(model)
@@ -1283,6 +1397,7 @@ function App() {
   const [assignPatientIDModalVisible, setAssignPatientIDModalVisible] = useState(false);
   const [patientIDModalVisible, setPatientIDModalVisible] = useState(false);
   const [newPatientModalVisible, setNewPatientModalVisible] = useState(false);
+  const [consentModalVisible, setConsentModalVisible] = useState(false);
   const [currentItemID, setCurrentItemID] = useState(null);
   const [patientID, setPatientID] = useState(null);
   
@@ -1364,6 +1479,17 @@ function App() {
     setNewPatientModalVisible(false);
   }
 
+  const showConsentModal = (item) => {
+    console.log('showConsentModal', item);
+    setCurrentItemID(item);
+    setConsentModalVisible(true);
+    closeModal();
+  }
+
+  const closeConsentModal = () => {
+    setConsentModalVisible(false);
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'row', height: '100vh', position: 'relative' }}>
       <Sidebar />
@@ -1394,6 +1520,7 @@ function App() {
           closeModal={closeModal}
           refreshTable={FetchPatientAdmissions}
           showAssignPatientIDModal={showAssignPatientIDModal}
+          showConsentModal={showConsentModal}
         />
       )}
 
@@ -1422,6 +1549,14 @@ function App() {
         <NewPatientModal           
           admissionID={currentItemID}
           closeModal={closeNewPatientIDModal}
+        />
+      )}
+
+      {/* Modal for Informed Consent */}
+      {consentModalVisible && (currentItemID !== null) && (
+        <ConsentModal
+          admissionID={currentItemID}
+          closeModal={closeConsentModal}
         />
       )}
     </div>

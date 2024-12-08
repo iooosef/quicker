@@ -30,3 +30,10 @@ body {
   color: black;
   forced-color-adjust: none;
 }
+
+.signature-area canvas {
+  background-color: white;
+}
+
+.signature-area div {
+}
