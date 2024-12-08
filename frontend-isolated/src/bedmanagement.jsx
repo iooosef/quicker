@@ -327,8 +327,17 @@ function Sidebar() {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false); // State for modal visibility
   const { user, loading  } = useUser();
+  const [isUserLoaded, setIsUserLoaded] = useState(false);
 
-  if (loading) return <p>Loading... PR</p>;
+  useEffect(() => {
+    if (user || loading === false) {
+      setIsUserLoaded(true);
+    }
+  }, [user, loading]);
+
+  if (loading || !isUserLoaded) {
+    return <div>Loading...</div>; 
+  }
 
   const handleLogout = () => {
     setShowModal(false); // Close modal
@@ -340,10 +349,18 @@ return (
     <aside className="sidebar">
     <img src={quicker} onClick={() => navigate('/menu')} alt="Quicker Logo" className="logo cursor-pointer" />
       <ul className="nav-menu">
-        <li className="nav-menu-item" onClick={() => navigate('/emergency')}>Emergency Room</li>
-        <li className="nav-menu-item" onClick={() => navigate('/inventory')}>Inventory</li>
-        <li className="nav-menu-item active" onClick={() => navigate('/beds')}>Bed Management</li>
-        <li className="nav-menu-item" onClick={() => navigate('/billing')}>Billing</li>
+        {(user.role == "ADMIN" || user.role == "STAFF") &&
+          <li className="nav-menu-item" onClick={() => navigate('/emergency')}>Emergency Room</li>
+        }
+        {(user.role == "ADMIN" || user.role == "INVENTORYSTAFF") &&
+          <li className="nav-menu-item" onClick={() => navigate('/inventory')}>Inventory</li>
+        }
+        {(user.role == "ADMIN" || user.role == "INVENTORYSTAFF") &&
+          <li className="nav-menu-item active" onClick={() => navigate('/beds')}>Bed Management</li>
+        }        
+        {(user.role == "ADMIN" || user.role == "STAFF") &&
+          <li className="nav-menu-item" onClick={() => navigate('/billing')}>Billing</li>
+        }
         <li className="nav-menu-item" onClick={() => setShowModal(true)}>Log-out</li>
       </ul>
 

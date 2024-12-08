@@ -3,6 +3,7 @@ import './inventory.css';
 import quicker from "./assets/quicker.png";
 import { useNavigate } from 'react-router-dom';
 import { useConfig } from './util/ConfigContext';
+import { useUser } from './auth/UserContext';
 import secureFetch from './auth/SecureFetch';
 
 function AddItem({ refreshInventory }) {
@@ -475,21 +476,41 @@ function validateSupply(supply) {
 function Sidebar() {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false); // State for modal visibility
+  const { user, loading  } = useUser();
+  const [isUserLoaded, setIsUserLoaded] = useState(false);
+
+  useEffect(() => {
+    if (user || loading === false) {
+      setIsUserLoaded(true);
+    }
+  }, [user, loading]);
+
+  if (loading || !isUserLoaded) {
+    return <div>Loading...</div>; 
+  }
 
   const handleLogout = () => {
     setShowModal(false); // Close modal
-    navigate('/LoginForm'); // Navigate to the login page
+    window.location.href = '/logout'; // Navigate to the login page
   };
 // Sidebar Component
 return (
   <div className="emergency-room-container">
     <aside className="sidebar">
-    <img src={quicker} alt="Quicker Logo" className="logo" />
+    <img src={quicker} onClick={() => navigate('/menu')} alt="Quicker Logo" className="logo cursor-pointer" />
       <ul className="nav-menu">
-        <li className="nav-menu-item" onClick={() => navigate('/emergency')}>Emergency Room</li>
-        <li className="nav-menu-item active" onClick={() => navigate('/inventory')}>Inventory</li>
-        <li className="nav-menu-item" onClick={() => navigate('/bedmanagement')}>Bed Management</li>
-        <li className="nav-menu-item" onClick={() => navigate('/billing')}>Billing</li>
+        {(user.role == "ADMIN" || user.role == "STAFF") &&
+          <li className="nav-menu-item" onClick={() => navigate('/emergency')}>Emergency Room</li>
+        }
+        {(user.role == "ADMIN" || user.role == "INVENTORYSTAFF") &&
+          <li className="nav-menu-item active" onClick={() => navigate('/inventory')}>Inventory</li>
+        }
+        {(user.role == "ADMIN" || user.role == "INVENTORYSTAFF") &&
+          <li className="nav-menu-item" onClick={() => navigate('/beds')}>Bed Management</li>
+        }        
+        {(user.role == "ADMIN" || user.role == "STAFF") &&
+          <li className="nav-menu-item" onClick={() => navigate('/billing')}>Billing</li>
+        }
         <li className="nav-menu-item" onClick={() => setShowModal(true)}>Log-out</li>
       </ul>
 
