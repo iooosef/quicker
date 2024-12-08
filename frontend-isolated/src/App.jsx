@@ -5,7 +5,8 @@ import LoginForm from './LoginForm';
 import RegisterForm from './RegisterForm';
 import Menu from './Menu';
 import EmergencyRoom from './emergencyRoom';
-import InventoryPage from './Inventory'; 
+import InventoryPage from './Inventory';
+import BedsPage from './bedmanagement' 
 import BillingPage from './Billing';
 import Logout from './auth/Logout';
 import Me from './auth/Me';
@@ -36,14 +37,26 @@ function App() {
             <Route path="/logout" element={<Logout />} />
             <Route path="/me" element={<Me />} />
 
-            <Route element={<ProtectedRoutes/>}>
+            <Route element={<ProtectedRoutes />}>
               <Route path="/menu" element={<Menu />} />
             </Route>
-            <Route element={<ProtectedRoutes/>}>
+
+            <Route element={<ProtectedRoutes allowedRoles={['ADMIN', 'INVENTORYSTAFF']} />}>
+              <Route path="/inventory" element={<InventoryPage />} />
+            </Route>
+
+            <Route element={<ProtectedRoutes allowedRoles={['ADMIN', 'INVENTORYSTAFF']} />}>
+              <Route path="/beds" element={<BedsPage />} />
+            </Route>
+
+            <Route element={<ProtectedRoutes allowedRoles={['ADMIN', 'STAFF']} />}>
               <Route path="/emergency" element={<EmergencyRoom />} />
             </Route>
-            <Route path="/inventory" element={<InventoryPage />} />
-            <Route path="/billing" element={<BillingPage />} />
+
+            <Route element={<ProtectedRoutes allowedRoles={['ADMIN', 'STAFF']} />}>
+              <Route path="/billing" element={<BillingPage />} />
+            </Route>
+
             <Route path="*" element={<div>404: Page Not Found</div>} />
           </Routes>
   );
