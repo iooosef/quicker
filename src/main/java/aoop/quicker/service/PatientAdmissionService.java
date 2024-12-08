@@ -34,6 +34,10 @@ public class PatientAdmissionService {
         return patientAdmissionRepository.findById(id);
     }
 
+    public Optional<PatientAdmission> getPatientAdmissionOfUnoccupiedBed(String bedLocation) {
+        return patientAdmissionRepository.findOccupiedBedLocation(bedLocation);
+    }
+
     public PatientAdmission addPatientAdmission(PatientAdmission patient) {
         return patientAdmissionRepository.save(patient);
     }

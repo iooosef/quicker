@@ -114,6 +114,17 @@ public class PatientAdmissionController {
             error.put("target", "model");
             errors.add(error);
         }
+        String originalBedLocCode = patientAdmissionService.getPatientAdmissionById(id).get().getPatientBedLocCode();
+        boolean isBedLocationChanged = !originalBedLocCode.equals(model.getPatientBedLocCode());
+        Optional<PatientAdmission> patientAdmissionUnoccupiedBed = patientAdmissionService.getPatientAdmissionOfUnoccupiedBed(model.getPatientBedLocCode());
+        boolean isBedOccupied = patientAdmissionUnoccupiedBed.isPresent();
+        if(isBedLocationChanged && isBedOccupied) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "validation_error");
+            error.put("message", "Bed location is already occupied");
+            error.put("target", "patientBedLocCode");
+            errors.add(error);
+        }
         if (!errors.isEmpty()) {
             return ResponseEntity.status(400).body(errors);
         }
