@@ -1,4 +1,8 @@
 /* General Reset */
+:root {
+    color-scheme: light only;
+  }
+  
 body {
     margin: 0;
     font-family: Arial, sans-serif;
