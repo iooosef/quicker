@@ -266,26 +266,12 @@ body {
     z-index: 1000;
 }
 
-.modal {
+.qe-modal {
     background: white;
     padding: 20px;
     border-radius: 10px;
     width: 400px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-}
-
-.modal label {
-    display: block;
-    margin: 10px 0;
-}
-
-.modal input,
-.modal select {
-    width: 100%;
-    padding: 8px;
-    margin: 5px 0;
-    border: 1px solid #ccc;
-    border-radius: 5px;
 }
 
 .form-actions {
@@ -319,7 +305,7 @@ body {
 }
 
 /* Modal Overlay */
-.modal-overlay {
+.qe-modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
@@ -333,7 +319,7 @@ body {
   }
   
   /* Modal Container */
-  .modal {
+  .qe-modal {
     background-color: #fff;
     padding: 20px;
     border-radius: 8px;
@@ -344,70 +330,10 @@ body {
     overflow-y: auto; /* Add vertical scroll when content overflows */
     display: flex;
     flex-direction: column;
-    gap: 15px;
   }
   
   /* Modal Header */
-  .modal h2 {
+  .qe-modal h2 {
     text-align: center;
     margin-bottom: 10px;
   }
-  
-  /* Modal Label */
-  .modal label {
-    display: flex;
-    flex-direction: column;
-    font-size: 14px;
-    font-weight: bold;
-    margin-bottom: 10px;
-  }
-  
-  /* Inputs and Selects */
-  .modal input[type="text"],
-  .modal input[type="date"],
-  .modal select {
-    width: 100%;
-    padding: 8px 10px;
-    font-size: 14px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    box-sizing: border-box;
-  }
-  
-  .modal input[type="text"]:focus,
-  .modal input[type="date"]:focus,
-  .modal select:focus {
-    outline: none;
-    border-color: #007bff;
-  }
-  
-  /* Form Actions */
-  .modal .form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-  }
-  
-  /* Buttons */
-  .modal button {
-    padding: 8px 15px;
-    border: none;
-    border-radius: 4px;
-    font-size: 14px;
-    cursor: pointer;
-  }
-  
-  .modal button:hover {
-    opacity: 0.9;
-  }
-  
-  .modal button:first-child {
-    background-color: #ccc;
-  }
-  
-  .modal button:last-child {
-    background-color: #007bff;
-    color: white;
-  }
-  
-  
