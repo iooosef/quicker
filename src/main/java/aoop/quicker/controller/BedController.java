@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -68,7 +69,7 @@ public class BedController {
 
     @PutMapping(value = "/bed/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> updateBed(@PathVariable int id, @RequestBody Bed model) {
-        List errors = Collections.emptyList();
+        List errors = new ArrayList();
         // Validation to prevent having two or more available beds in the same location
         boolean isNewStatusAvailable = model.getBedStatus().equals("available");
         boolean isAvailable = bedService.isAlreadyAvailable(model.getBedLocCode());
@@ -84,8 +85,8 @@ public class BedController {
         }
 
         // Validation to prevent changing of status of already disposed beds
-        boolean isDisposed = bedService.getBedById(id).get().getBedStatus().equals("Disposed");
-        boolean isNewStatusDisposed = model.getBedStatus().equals("Disposed");
+        boolean isDisposed = bedService.getBedById(id).get().getBedStatus().equals("disposed");
+        boolean isNewStatusDisposed = model.getBedStatus().equals("disposed");
         if (isDisposed && !isNewStatusDisposed) {
             HashMap<String, String> error = new HashMap<>();
             // If the bed is already disposed and the new status is not disposed
