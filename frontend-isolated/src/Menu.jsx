@@ -25,7 +25,7 @@ const Menu = () => {
   }
 
   return (
-    <div className="menu-container h-full flex flex-col p-6">
+    <div className="menu-container h-screen flex flex-col p-6">
       <div className="w-full flex justify-between mb-4">
         <img src={quicker} alt="Quicker Logo" className="menu-logo w-52" />
           <a href="/logout" className="text-black">
@@ -38,7 +38,7 @@ const Menu = () => {
         <div className="menu-grid h-full flex gap-4">
             {(user.role == "ADMIN" || user.role == "INVENTORYSTAFF") &&
                 <div
-                    className="menu-card w-full h-full py-8 flex justify-center items-center rounded-lg cursor-pointer hover:translate-y-[-5px] transition-all ease-in"
+                    className="!bg-center !bg-cover menu-card w-full h-full py-8 flex justify-center items-center rounded-lg cursor-pointer hover:translate-y-[-5px] transition-all ease-in"
                     style={{backgroundImage: `url(${inventory})`}}
                     onClick={() => navigate('/inventory')}
                 >
@@ -51,7 +51,7 @@ const Menu = () => {
         
         {(user.role == "ADMIN" || user.role == "STAFF") &&
           <div
-            className="menu-card w-full h-full py-8 flex justify-center items-center rounded-lg cursor-pointer hover:translate-y-[-5px] transition-all ease-in"
+            className="!bg-center !bg-cover menu-card w-full h-full py-8 flex justify-center items-center rounded-lg cursor-pointer hover:translate-y-[-5px] transition-all ease-in"
             style={{ backgroundImage: `url(${emergency})` }}
             onClick={() => navigate('/emergency')}
           >
