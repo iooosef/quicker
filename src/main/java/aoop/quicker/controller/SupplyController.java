@@ -134,15 +134,25 @@ public class SupplyController {
             error.put("target", "model");
             errors.add(error);
         }
+        boolean isSupply = model.getSupplyType().contains("supply:");
+
         boolean invalidQty = model.getSupplyQty() < 0;
-        if (invalidQty) {
+        if (isSupply && invalidQty) {
             HashMap<String, String> error = new HashMap<>();
             error.put("type", "validation_error");
             error.put("message", "Invalid quantity");
             error.put("target", "model");
             errors.add(error);
         }
-        boolean invalidPrice = model.getSupplyPrice().compareTo(java.math.BigDecimal.ZERO) < 0;
+        if (!isSupply && model.getSupplyQty() != -1) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "validation_error");
+            error.put("message", "Invalid quantity");
+            error.put("target", "model");
+            errors.add(error);
+        }
+
+        boolean invalidPrice = model.getSupplyPrice().compareTo(java.math.BigDecimal.ZERO) <= 0;
         if (invalidPrice) {
             HashMap<String, String> error = new HashMap<>();
             error.put("type", "validation_error");
