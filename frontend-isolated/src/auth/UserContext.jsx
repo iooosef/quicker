@@ -30,6 +30,9 @@ export const UserProvider = ({ children }) => {
           setUser(user); // Populate user context
         } else {
           setUser(null); // Session invalid or not logged in
+          if(window.location.pathname !== '/') {
+            window.location.href = '/'; // Redirect to login page
+          }
         }
       } catch (error) {
         console.error('Session validation failed:', error);
