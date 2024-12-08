@@ -539,9 +539,8 @@ function PatientRecordModal( {admissionID, patientID, closeModal} ) {
     setErrors(foundErrors);
     return Object.keys(foundErrors).length === 0;
   };
-  console.log(patientID)
 
-  const FetchTable = () => {
+  const FetchPatient = () => {
     if (!serverUrl) return;
     setLoading(true)
     secureFetch(`${serverUrl}/patients/${(patientID)}`, 
@@ -640,7 +639,7 @@ function PatientRecordModal( {admissionID, patientID, closeModal} ) {
   }
 
   useEffect(() => {
-    FetchTable();
+    FetchPatient();
   }, [patientID]);
 
   return (
@@ -651,24 +650,53 @@ function PatientRecordModal( {admissionID, patientID, closeModal} ) {
             <div className="qe-modal gap-4 !w-fit !max-w-fit" style={{ display: 'flex' }}>   
               <h4 className="text-2xl mb-2">Patient No. {patientID}</h4>
 
-              <label className="input-group w-full max-w-full">
-                <span className="input-group-text font-bold uppercase text-nowrap">Full Name</span>
-                <input type="text" className="input grow !text-black" value={model.patientFullName || ""} 
-                onChange={e => setModel((prev) => ({
-                  ...prev,
-                  patientFullName: e.target.value
-                }))}/>
-              </label>
-              
-              <div className='w-full gap-4 flex'>
+              <div className='w-full form-control'>
                 <label className="input-group w-full max-w-full">
-                  <span className="input-group-text font-bold uppercase text-nowrap">Gender</span>
-                  <input type="text" className="input grow !text-black" value={model.patientGender || ""} 
+                  <span className={"input-group-text font-bold uppercase text-nowrap " + 
+                    (errors.patientFullName && "text-error")
+                  }>Full Name</span>
+                  <input type="text" className={"input grow !text-black " + 
+                    (errors.patientFullName && "is-invalid text-error")
+                  } value={model.patientFullName || ""} 
                   onChange={e => setModel((prev) => ({
                     ...prev,
-                    patientGender: e.target.value
+                    patientFullName: e.target.value
                   }))}/>
                 </label>
+                {errors.patientFullName && (
+                  <div className="label">
+                    <span className="label-text-alt text-error">{errors.patientFullName}</span>
+                  </div>
+                  )} 
+              </div>
+              
+              <div className='w-full gap-4 flex'>
+                <div className='w-full form-control'>                    
+                  <label className="input-group w-full max-w-full">
+                    <span className={"input-group-text font-bold uppercase text-nowrap " + 
+                    (errors.patientGender && "text-error")}>Gender</span>
+                    <select
+                      className={"w-full select grow " + 
+                        (errors.patientGender && "is-invalid text-error")}
+                      value={model.patientGender || ""}
+                      onChange={e =>
+                        setModel(prev => ({
+                          ...prev,
+                          patientGender: e.target.value
+                        }))
+                      }>
+                      <option value="" disabled>Select Gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </label>
+                  {errors.patientGender && (
+                    <div className="label">
+                      <span className="label-text-alt text-error">{errors.patientGender}</span>
+                    </div>
+                  )} 
+                </div>
 
                 <label className="input-group w-full max-w-full">
                   <span className="input-group-text font-bold uppercase text-nowrap">Birthdate</span>
@@ -748,7 +776,7 @@ function PatientRecordModal( {admissionID, patientID, closeModal} ) {
 
 }
 
-function AssignPatientIDModal( {admissionID, closeModal, refreshTable, showAssignPatientIDModal} ) {
+function AssignPatientIDModal( {admissionID, closeModal, refreshTable, showAssignPatientIDModal, showNewPatientModal} ) {
   const { serverUrl } = useConfig();
   const [loading, setLoading] = useState(false)
   const [patients, setPatients] = useState({});
@@ -884,11 +912,235 @@ function AssignPatientIDModal( {admissionID, closeModal, refreshTable, showAssig
             }
 
             </div>
-            <button className="btn btn-primary">No Record Found? Create New One</button>
+            <button onClick={() => showNewPatientModal(admissionID)} className="btn btn-primary">No Record Found? Create New One</button>
           <button onClick={closeModal} className="btn btn-secondary">Close</button>
         </div>
       )
     }
+    </div>
+  )
+}
+
+function NewPatientModal( {admissionID, closeModal}) {
+  const { serverUrl } = useConfig();
+  const [loading, setLoading] = useState(false)
+  const [model, setModel] = useState({});
+  const [errors, setErrors] = useState({});
+  
+  const validateModel = () => {
+    const foundErrors = validatePatientModel(model);
+    setErrors(foundErrors);
+    return Object.keys(foundErrors).length === 0;
+  };
+
+  const AddPatient = () => {
+    if (!serverUrl) return;
+    if (!validateModel()) return;
+    setLoading(true)
+
+    const patientPayload = { 
+      patientFullName: model.patientFullName,
+      patientGender: model.patientGender,
+      patientDOB: ensureDateIsInstantSerializable(model.patientDOB),
+      patientAddress: model.patientAddress,
+      patientContactNum: model.patientContactNum,
+      patientEmergencyContactName: model.patientEmergencyContactName,
+      patientEmergencyContactNum: model.patientEmergencyContactNum,
+      patientPWDID: model.patientPWDID,
+      patientSeniorID: model.patientSeniorID
+    };
+    
+    secureFetch(`${serverUrl}/patients/patient`, 
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+      body: JSON.stringify(patientPayload)
+    })
+    .then(async (response) => {
+      const responseBody = await response.json()
+      console.log(response)
+      if(response.status !== 200) {
+        console.log(responseBody);
+        const errorString = responseBody.map((error) => error.message).join('\n');
+        alert(errorString);
+      } else {
+        console.log(responseBody)
+        alert(`Successfully updated Patient Record for ${model.patientFullName}`);
+        updateAdmissionPatientID(responseBody.id);
+      }
+    })
+    .catch(error => console.error(error)).
+    finally(() => {
+      setLoading(false)
+    })
+  }
+
+  const updateAdmissionPatientID = (patientID) => { 
+    const admissionPayload = {
+      id: admissionID,
+      patientID: patientID,
+      patientName: null,
+      patientTriage: null,
+      patientStatus: null,
+      patientBedLocCode: null,
+      patientAdmitOn: null,
+      patientOutOn: null,
+      patientERCause: null
+    };
+    secureFetch(`${serverUrl}/patient-admissions/admission/patientID/${admissionID}`, 
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include',
+        body: JSON.stringify(admissionPayload)
+      })
+      .then(async (response) => {
+        const responseBody = await response.json()
+        console.log(response)
+        if(response.status !== 200) {
+          console.log(responseBody);
+          const errorString = responseBody.map((error) => error.message).join('\n');
+          alert(errorString);
+        } else {        
+          alert(`Successfully assigned Patient Record No. ${patientID} to Admission No. ${admissionID}`);
+          closeModal();
+        }
+      })
+      .catch(error => console.error(error)).
+      finally(() => {
+        setLoading(false)
+      })
+  }
+
+  return (
+    <div className='qe-modal-overlay'>   
+      { loading ? (
+          <span>Loading...</span>
+          ) : (
+            <div className="qe-modal gap-4 !w-fit !max-w-fit" style={{ display: 'flex' }}>   
+              <h4 className="text-2xl mb-2">New Patient Record for Admission No. {admissionID}</h4>
+              
+              <div className='w-full form-control'>
+                <label className="input-group w-full max-w-full">
+                  <span className={"input-group-text font-bold uppercase text-nowrap " + 
+                    (errors.patientFullName && "text-error")
+                  }>Full Name</span>
+                  <input type="text" className={"input grow !text-black " + 
+                    (errors.patientFullName && "is-invalid text-error")
+                  } value={model.patientFullName || ""} 
+                  onChange={e => setModel((prev) => ({
+                    ...prev,
+                    patientFullName: e.target.value
+                  }))}/>
+                </label>
+                {errors.patientFullName && (
+                  <div className="label">
+                    <span className="label-text-alt text-error">{errors.patientFullName}</span>
+                  </div>
+                  )} 
+              </div>
+              
+              <div className='w-full gap-4 flex'>
+                <div className='w-full form-control'>                    
+                  <label className="input-group w-full max-w-full">
+                    <span className={"input-group-text font-bold uppercase text-nowrap " + 
+                    (errors.patientGender && "text-error")}>Gender</span>
+                    <select
+                      className={"w-full select grow " + 
+                        (errors.patientGender && "is-invalid text-error")}
+                      value={model.patientGender || ""}
+                      onChange={e =>
+                        setModel(prev => ({
+                          ...prev,
+                          patientGender: e.target.value
+                        }))
+                      }>
+                      <option value="" disabled>Select Gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </label>
+                  {errors.patientGender && (
+                    <div className="label">
+                      <span className="label-text-alt text-error">{errors.patientGender}</span>
+                    </div>
+                  )} 
+                </div>
+
+                <label className="input-group w-full max-w-full">
+                  <span className="input-group-text font-bold uppercase text-nowrap">Birthdate</span>
+                  <input type="date" className="input grow !text-black" value={formatDateForInputDate (model.patientDOB) || ""} 
+                  onChange={e => setModel((prev) => ({
+                    ...prev,
+                    patientDOB: e.target.value
+                  }))}/>
+                </label>
+              </div>
+
+              <label className="input-group w-full max-w-full">
+                <span className="input-group-text font-bold uppercase text-nowrap">Address</span>
+                <input type="text" className="input grow !text-black" value={model.patientAddress || ""} 
+                  onChange={e => setModel((prev) => ({
+                    ...prev,
+                    patientAddress: e.target.value
+                  }))}/>
+              </label>
+
+              <label className="input-group w-full max-w-full">
+                <span className="input-group-text font-bold uppercase text-nowrap">Contact Number</span>
+                <input type="text" className="input grow !text-black" value={model.patientContactNum || ""} 
+                  onChange={e => setModel((prev) => ({
+                    ...prev,
+                    patientContactNum: e.target.value
+                  }))}/>
+              </label>
+              
+              <div className='w-full gap-4 flex'>
+                <label className="input-group w-full max-w-full">
+                  <span className="input-group-text font-bold uppercase text-nowrap">Emergency Contact</span>
+                  <input type="text" className="input grow !text-black" value={model.patientEmergencyContactName || ""} 
+                  onChange={e => setModel((prev) => ({
+                    ...prev,
+                    patientEmergencyContactName: e.target.value
+                  }))}/>
+                </label>
+
+                <label className="input-group w-full max-w-full">
+                  <span className="input-group-text font-bold uppercase text-nowrap">Emergency Contact Number</span>
+                  <input type="text" className="input grow !text-black" value={model.patientEmergencyContactNum || ""} 
+                  onChange={e => setModel((prev) => ({
+                    ...prev,
+                    patientEmergencyContactNum: e.target.value
+                  }))}/>
+                </label>
+              </div>
+              
+              <div className='w-full gap-4 flex'>
+                <label className="input-group w-full max-w-full">
+                  <span className="input-group-text font-bold uppercase text-nowrap">PWD ID</span>
+                  <input type="text" className="input grow !text-black" value={model.patientPWDID || ""} 
+                  onChange={e => setModel((prev) => ({
+                    ...prev,
+                    patientPWDID: e.target.value
+                  }))}/>
+                </label>
+
+                <label className="input-group w-full max-w-full">
+                  <span className="input-group-text font-bold uppercase text-nowrap">Senior Citizen ID</span>
+                  <input type="text" className="input grow !text-black" value={model.patientSeniorID || ""} 
+                  onChange={e => setModel((prev) => ({
+                    ...prev,
+                    patientSeniorID: e.target.value
+                  }))}/>
+                </label>
+              </div>
+              <button onClick={AddPatient} className="btn btn-primary">Add Patient Record and assign it to Admission No. {admissionID}</button>
+              <button onClick={closeModal} className="btn btn-secondary">Close</button>
+            </div>
+          )
+      }
     </div>
   )
 }
@@ -1030,6 +1282,7 @@ function App() {
   const [modalVisible, setModalVisible] = useState(false);
   const [assignPatientIDModalVisible, setAssignPatientIDModalVisible] = useState(false);
   const [patientIDModalVisible, setPatientIDModalVisible] = useState(false);
+  const [newPatientModalVisible, setNewPatientModalVisible] = useState(false);
   const [currentItemID, setCurrentItemID] = useState(null);
   const [patientID, setPatientID] = useState(null);
   
@@ -1090,7 +1343,7 @@ function App() {
   };
 
   const showPatientIDModal = (item) => {
-    console.log('showAssignPatientIDModal', item);
+    console.log('showPatientIDModal', item);
     setPatientID(item);
     setPatientIDModalVisible(true);
     closeAssignPatientIDModal();
@@ -1098,6 +1351,17 @@ function App() {
 
   const closePatientIDModal = () => {
     setPatientIDModalVisible(false);
+  }
+
+  const showNewPatientModal = (item) => {
+    console.log('showNewPatientModal', item);
+    setCurrentItemID(item);
+    setNewPatientModalVisible(true);
+    closeAssignPatientIDModal();
+  }
+
+  const closeNewPatientIDModal = () => {
+    setNewPatientModalVisible(false);
   }
 
   return (
@@ -1140,6 +1404,7 @@ function App() {
           closeModal={closeAssignPatientIDModal}
           refreshTable={FetchPatientAdmissions}
           showAssignPatientIDModal={showPatientIDModal}
+          showNewPatientModal={showNewPatientModal}
         />
       )}
 
@@ -1152,7 +1417,13 @@ function App() {
         />
       )}
       
-
+      {/* Modal for New Patient */}
+      {newPatientModalVisible && (currentItemID !== null) && (
+        <NewPatientModal           
+          admissionID={currentItemID}
+          closeModal={closeNewPatientIDModal}
+        />
+      )}
     </div>
   );
 };
