@@ -26,37 +26,37 @@ public class PatientsMedicalInfo {
 
     @Nationalized
     @Lob
-    @Column(name = "patientMedNfoAllergies", nullable = false)
+    @Column(name = "patientMedNfoAllergies", nullable = true)
     private String patientMedNfoAllergies;
 
     @Nationalized
     @Lob
-    @Column(name = "patientMedNfoMedications", nullable = false)
+    @Column(name = "patientMedNfoMedications", nullable = true)
     private String patientMedNfoMedications;
 
     @Nationalized
     @Lob
-    @Column(name = "patientMedNfoComorbidities", nullable = false)
+    @Column(name = "patientMedNfoComorbidities", nullable = true)
     private String patientMedNfoComorbidities;
 
     @Nationalized
     @Lob
-    @Column(name = "patientMedNfoHistory", nullable = false)
+    @Column(name = "patientMedNfoHistory", nullable = true)
     private String patientMedNfoHistory;
 
     @Nationalized
     @Lob
-    @Column(name = "patientMedNfoImmunization", nullable = false)
+    @Column(name = "patientMedNfoImmunization", nullable = true)
     private String patientMedNfoImmunization;
 
     @Nationalized
     @Lob
-    @Column(name = "patientMedNfoFamilyHistory", nullable = false)
+    @Column(name = "patientMedNfoFamilyHistory", nullable = true)
     private String patientMedNfoFamilyHistory;
 
     @Nationalized
     @Lob
-    @Column(name = "patientMedNfoCOVIDVaxx", nullable = false)
+    @Column(name = "patientMedNfoCOVIDVaxx", nullable = true)
     private String patientMedNfoCOVIDVaxx;
 
 }
