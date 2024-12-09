@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -184,6 +185,8 @@ public class PatientAdmissionController {
         patientBilling.setAdmissionID(admissionID);
         patientBilling.setBillingItemDetails(baseERFee.getSupplyName());
         patientBilling.setBillingItemPrice(baseERFee.getSupplyPrice());
+        patientBilling.setBillingItemQty(1);
+        patientBilling.setBillingItemDiscount(new BigDecimal("0.0"));
         patientBillingService.savePatientBilling(patientBilling);
     }
 

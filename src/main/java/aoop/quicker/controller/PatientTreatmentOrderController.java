@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -85,6 +86,7 @@ public class PatientTreatmentOrderController {
         billing.setAdmissionID(patientTreatmentOrder.getAdmissionID());
         billing.setBillingItemDetails(supply.getSupplyName());
         billing.setBillingItemPrice(supply.getSupplyPrice());
+        billing.setBillingItemDiscount(new BigDecimal("0.0"));
 
         if (existingBilling.isPresent()) {
             billing.setBillingItemQty(existingBilling.get().getBillingItemQty() + 1);
