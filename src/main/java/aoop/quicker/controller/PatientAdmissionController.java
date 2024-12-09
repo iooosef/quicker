@@ -70,6 +70,15 @@ public class PatientAdmissionController {
     @PostMapping(value="/admission", produces= MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> addPatientAdmission(@RequestBody PatientAdmission model) {
         List errors = validatePatientAdmission(model, true);
+        Optional<PatientAdmission> patientAdmissionUnoccupiedBed = patientAdmissionService.getPatientAdmissionOfUnoccupiedBed(model.getPatientBedLocCode());
+        boolean isBedOccupied = patientAdmissionUnoccupiedBed.isPresent();
+        if(isBedOccupied) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "validation_error");
+            error.put("message", "Bed location is already occupied");
+            error.put("target", "patientBedLocCode");
+            errors.add(error);
+        }
         if (!errors.isEmpty()) {
             return ResponseEntity.status(400).body(errors);
         }
@@ -90,6 +99,15 @@ public class PatientAdmissionController {
             error.put("type", "validation_error");
             error.put("message", "Force parameter is false");
             error.put("target", "force");
+            errors.add(error);
+        }
+        Optional<PatientAdmission> patientAdmissionUnoccupiedBed = patientAdmissionService.getPatientAdmissionOfUnoccupiedBed(model.getPatientBedLocCode());
+        boolean isBedOccupied = patientAdmissionUnoccupiedBed.isPresent();
+        if(isBedOccupied) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "validation_error");
+            error.put("message", "Bed location is already occupied");
+            error.put("target", "patientBedLocCode");
             errors.add(error);
         }
         if (!errors.isEmpty()) {
