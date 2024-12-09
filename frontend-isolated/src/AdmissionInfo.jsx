@@ -144,17 +144,17 @@ function LogModal({admissionID, logID, closeModal}) {
             <div className="qe-modal gap-4 !w-full !max-w-2xl" style={{ display: 'flex' }}>   
                 <h4 className="text-2xl mb-2 text-nowrap">Log No. {logID} for Admission No. {admissionID}</h4>
                 <div className="form-control w-full">
-                    <textarea className="textarea textarea-floating peer" value={model.patientLogMsg} readOnly></textarea>
+                    <textarea className="textarea textarea-floating peer" defaultValue={model.patientLogMsg} readOnly></textarea>
                     <span className="textarea-floating-label">Log Message</span>
                 </div>
                 <div className='flex gap-4'>
 
                 <div className="form-control w-96">
-                    <input type="text" value={model.patientLogBy} className="input input-floating peer" readOnly />
+                    <input type="text" defaultValue={model.patientLogBy} className="input input-floating peer" readOnly />
                     <label className="input-floating-label">Logged By</label>
                 </div>
                 <div className="form-control w-96">
-                    <input type="text" value={model.patientLogOn} className="input input-floating peer" readOnly />
+                    <input type="text" defaultValue={model.patientLogOn} className="input input-floating peer" readOnly />
                     <label className="input-floating-label">Logged On</label>
                 </div>
 
@@ -187,6 +187,8 @@ function AdmissionInfo({admissionID, closeModal}) {
 
     const [logModalVisible, setLogModalVisible] = useState(false);
     const [logID, setLogID] = useState(null);
+    const [patientOutOfER, setPatientOutOfER] = useState(false);
+    const [hasMedicalRecord, setHasMedicalRecord] = useState(false);
 
     const showLogModal = (id) => {
         setLogID(id);
@@ -224,15 +226,21 @@ function AdmissionInfo({admissionID, closeModal}) {
       if (currentPage < patientLogs.totalPages - 1) {
         setCurrentPage(currentPage + 1);
       }
-    }
+    };
   
     const PreviousPage = () => {
       if (currentPage > 0) {
         setCurrentPage(currentPage - 1);
       }
-    }
+    };
+
+    const isPatientOutOfER = (status) => {
+        return status === "paid" || status === "collateralized" || 
+               status === "discharged" || status === "admitted-to-ward" || status?.includes("transferred");
+    };
 
     const formatDTStr = (dateStr) => {
+        if (dateStr === null || isNaN(new Date(dateStr).getTime())) return '';
         const date = new Date(dateStr);
         const formattedDate = new Intl.DateTimeFormat('en-US', {
           year: 'numeric',
@@ -243,15 +251,119 @@ function AdmissionInfo({admissionID, closeModal}) {
           hour12: true, // 12-hour format; set to false for 24-hour format
         }).format(date);
         return formattedDate;
-      };
+    };
+
+    const extractFeetAndInches = (totFt) => {
+        if (totFt === null || isNaN(totFt)) return '';
+        let feet = Math.floor(totFt);  
+        let inches = Math.round((totFt - feet) * 12);  
+        return { feet, inches };
+    };
+
+    const formateDStr = (dateStr) => {
+        if (dateStr === null || isNaN(new Date(dateStr).getTime())) return '';
+        const date = new Date(dateStr);
+        const formattedDate = new Intl.DateTimeFormat('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+        }).format(date);
+        return formattedDate;
+    };
 
     const truncateLongStr = (str, n) => {
     return (str.length > n) ? str.slice(0, n-1) + "\u2026" : str;
-    }
+    };
       
     useEffect(() => {
         FetchPatientLogs()
     }, [currentPage, itemsPerPage])
+
+    const [admission, setAdmission] = useState({});
+    const FetchAdmission = () => {
+        if (!serverUrl) return;
+        setLoading(true)
+        secureFetch(`${serverUrl}/patient-admissions/${admissionID}`, 
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          credentials: 'include',
+        })
+        .then(response => response.json())
+        .then(data => setAdmission(data))
+        .catch(error => console.error(error)).
+        finally(() => {
+          setLoading(false)
+        })
+      }
+
+    const [patient, setPatient] = useState({});
+    const FetchPatient = () => {
+        if (!serverUrl) return;
+        setLoading(true)
+        secureFetch(`${serverUrl}/patients/${(admission.patientID)}`, 
+        {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include',
+        })
+        .then(response => response.json())
+        .then(data => setPatient(data))
+        .catch(error => console.error(error)).
+        finally(() => {
+        setLoading(false)
+        })
+    }
+
+    const [medicalRecord, setMedicalRecord] = useState({});
+    const FetchMedicalRecord = () => {
+        if (!serverUrl) return;
+        setLoading(true)
+        secureFetch(`${serverUrl}/patients-medical-info/${(admission.patientID)}`, 
+        {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include',
+        })
+        .then(response => response.json())
+        .then(data => setMedicalRecord(data))
+        .catch(error => console.error(error)).
+        finally(() => {
+        setLoading(false)
+        })
+    }
+    const medicalRecordExist = () => {
+        if (!serverUrl) return;
+        setLoading(true);
+        secureFetch(`${serverUrl}/patients-medical-info/${admission.patientID}?`, 
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json"},
+          credentials: 'include'
+        })
+        .then(async (response) => {
+          if(response.status === 200) {
+            setHasMedicalRecord(true);
+          } else {        
+            setHasMedicalRecord(false);
+          }
+        })
+        .catch(error => console.error(error)).
+        finally(() => {
+          setLoading(false);
+        });
+      }
+
+    useEffect(() => {
+        FetchAdmission();
+        (admission.patientStatus && setPatientOutOfER(isPatientOutOfER(admission.patientStatus)));
+        if (admission.patientID) {
+            FetchPatient();
+            FetchMedicalRecord();
+            medicalRecordExist();
+        }      
+        
+    }, [admissionID, admission.patientID, admission.patientStatus]);
 
     return (
         <>           
@@ -263,12 +375,156 @@ function AdmissionInfo({admissionID, closeModal}) {
                     <h4 className="text-2xl mb-2">Admission Details for No. {admissionID}</h4>
                     <div className='flex gap-4'>
                         {/* INFO SECTION */}
-                        <div className='flex-1'>
-                            INFO HERE
+                        <div className='flex-1 flex flex-col gap-4'>
+                            {/* Admission Info */}
+                            <div className="inventory-container !flex-none gap-4">
+                                <h4 className="text-2xl mb-2">Admission Details</h4>
+                                <div className='flex gap-4'>
+                                    <div className="form-control w-full">
+                                        <input type="text" defaultValue={admission.id} className="input input-floating peer" readOnly />
+                                        <label className="input-floating-label">ID</label>
+                                    </div>
+                                    <div className="form-control w-full">
+                                        <input type="text" defaultValue={admission.patientTriage} className="input input-floating peer" readOnly />
+                                        <label className="input-floating-label">Triage</label>
+                                    </div>
+                                </div>
+                                    <div className="form-control w-full">
+                                        <input type="text" defaultValue={admission.patientName} className="input input-floating peer" readOnly />
+                                        <label className="input-floating-label">Patient Name</label>
+                                    </div>
+                                <div className='flex gap-4'>
+                                    <div className="form-control w-full">
+                                        <input type="text" defaultValue={admission.patientBedLocCode} className="input input-floating peer" readOnly />
+                                        <label className="input-floating-label">Bed Location Code</label>
+                                    </div>
+                                    <div className="form-control w-full">
+                                        <input type="text" defaultValue={admission.patientStatus} className="input input-floating peer" readOnly />
+                                        <label className="input-floating-label">Status</label>
+                                    </div>
+                                </div>
+                                <div className='flex gap-4'>
+                                    <div className="form-control w-full">
+                                        <input type="text" defaultValue={formatDTStr(admission.patientAdmitOn)} className="input input-floating peer" readOnly />
+                                        <label className="input-floating-label">Admitted On</label>
+                                    </div>
+                                    <div className="form-control w-full">
+                                        <input type="text" defaultValue={formatDTStr(admission.patientOutOn)} className="input input-floating peer" readOnly />
+                                        <label className="input-floating-label">Out of E.R. Since</label>
+                                    </div>
+                                </div>
+                            </div>
+                            {/* Patient Info*/}
+                            {admission.patientID && 
+                                <div className="inventory-container !flex-none gap-4">                                
+                                    <h4 className="text-2xl mb-2">Patient Details</h4>
+                                    <div className='flex gap-4'>
+                                        <div className="form-control w-1/2">
+                                            <input type="text" defaultValue={patient.id} className="input input-floating peer" readOnly />
+                                            <label className="input-floating-label">ID</label>
+                                        </div>
+                                    </div>
+                                        <div className="form-control w-full">
+                                            <input type="text" defaultValue={patient.patientFullName} className="input input-floating peer" readOnly />
+                                            <label className="input-floating-label">Full Name</label>
+                                        </div>
+                                    <div className='flex gap-4'>
+                                        <div className="form-control w-full">
+                                            <input type="text" defaultValue={patient.patientGender} className="input input-floating peer" readOnly />
+                                            <label className="input-floating-label">Gender</label>
+                                        </div>
+                                        <div className="form-control w-full">
+                                            <input type="text" defaultValue={formateDStr(patient.patientDOB)} className="input input-floating peer" readOnly />
+                                            <label className="input-floating-label">Birthdate</label>
+                                        </div>
+                                    </div>
+                                        <div className="form-control w-full">
+                                            <input type="text" defaultValue={patient.patientAddress} className="input input-floating peer" readOnly />
+                                            <label className="input-floating-label">Address</label>
+                                        </div>
+                                        <div className="form-control w-full">
+                                            <input type="text" defaultValue={patient.patientContactNum} className="input input-floating peer" readOnly />
+                                            <label className="input-floating-label">Contact Number</label>
+                                        </div>
+                                    <div className='flex gap-4'>
+                                        <div className="form-control w-full">
+                                            <input type="text" defaultValue={patient.patientEmergencyContactName} className="input input-floating peer" readOnly />
+                                            <label className="input-floating-label">Emergency Contact</label>
+                                        </div>
+                                        <div className="form-control w-full">
+                                            <input type="text" defaultValue={patient.patientEmergencyContactNum} className="input input-floating peer" readOnly />
+                                            <label className="input-floating-label">Emergency Contact Number</label>
+                                        </div>
+                                    </div>
+                                    <div className='flex gap-4'>
+                                        <div className="form-control w-full">
+                                            <input type="text" defaultValue={patient.patientPWDID} className="input input-floating peer" readOnly />
+                                            <label className="input-floating-label">PWD ID (if PWD)</label>
+                                        </div>
+                                        <div className="form-control w-full">
+                                            <input type="text" defaultValue={patient.patientSeniorID} className="input input-floating peer" readOnly />
+                                            <label className="input-floating-label">Senior Citizen ID (if senior)</label>
+                                        </div>
+                                    </div>                                    
+                                </div>
+                            }
+                            {/* Medical Info */}
+                            {admission.patientID && hasMedicalRecord &&
+                                <div className="inventory-container !flex-none gap-4">                   
+                                    <h4 className="text-2xl mb-2">Medical Info</h4>
+                                    <div className='flex gap-4'>
+                                        <div className="form-control w-1/2">
+                                            <input type="text" defaultValue={medicalRecord.id} className="input input-floating peer" readOnly />
+                                            <label className="input-floating-label">ID</label>
+                                        </div>
+                                    </div>
+                                    <div className='flex gap-4'>
+                                        <div className="form-control w-full">
+                                            <input type="text" defaultValue={
+                                                `${extractFeetAndInches(medicalRecord.patientMedNfoHeight).feet} ft ` + 
+                                                `${extractFeetAndInches(medicalRecord.patientMedNfoHeight).inches} inches`
+                                            } className="input input-floating peer" readOnly />
+                                            <label className="input-floating-label">Height</label>
+                                        </div>
+                                        <div className="form-control w-full">
+                                            <input type="text" defaultValue={medicalRecord.patientMedNfoWeight + " kg"} className="input input-floating peer" readOnly />
+                                            <label className="input-floating-label">Weight</label>
+                                        </div>
+                                    </div>
+                                        <div className="form-control w-full">
+                                            <textarea defaultValue={medicalRecord.patientMedNfoAllergies} className="textarea textarea-floating peer" readOnly />
+                                            <label className="textarea-floating-label">Allergies</label>
+                                        </div>
+                                        <div className="form-control w-full">
+                                            <textarea defaultValue={medicalRecord.patientMedNfoMedications} className="textarea textarea-floating peer" readOnly />
+                                            <label className="textarea-floating-label">Medications</label>
+                                        </div>
+                                        <div className="form-control w-full">
+                                            <textarea defaultValue={medicalRecord.patientMedNfoComorbidities} className="textarea textarea-floating peer" readOnly />
+                                            <label className="textarea-floating-label">Comorbidities</label>
+                                        </div>
+                                        <div className="form-control w-full">
+                                            <textarea defaultValue={medicalRecord.patientMedNfoHistory} className="textarea textarea-floating peer" readOnly />
+                                            <label className="textarea-floating-label">Medical History</label>
+                                        </div>
+                                        <div className="form-control w-full">
+                                            <textarea defaultValue={medicalRecord.patientMedNfoImmunization} className="textarea textarea-floating peer" readOnly />
+                                            <label className="textarea-floating-label">Immunization History</label>
+                                        </div>
+                                        <div className="form-control w-full">
+                                            <textarea defaultValue={medicalRecord.patientMedNfoFamilyHistory} className="textarea textarea-floating peer" readOnly />
+                                            <label className="textarea-floating-label">Family Medical History</label>
+                                        </div>
+                                        <div className="form-control w-full">
+                                            <input type="text" defaultValue={medicalRecord.patientMedNfoCOVIDVaxx} className="input input-floating peer" readOnly />
+                                            <label className="input-floating-label">COVID-19 Vaccination</label>
+                                        </div>
+                                </div>
+                            }
                         </div>
                         {/* LOGS SECTION */}
                         <div className='flex-1 flex flex-col gap-4'>
-                            <div className="inventory-container">
+                            <div className="inventory-container !flex-none">
                                 <h4 className="text-2xl mb-2">Patient Logs</h4>
                                 <table className='!mt-0'>
                                     <thead>
@@ -328,7 +584,9 @@ function AdmissionInfo({admissionID, closeModal}) {
                                     ) : null
                                 }
                             </div>
-                            <AddLog admissionID={admissionID} updateLogsTbl={FetchPatientLogs} showLogModal={showLogModal} />   
+                            {!patientOutOfER &&
+                                <AddLog admissionID={admissionID} updateLogsTbl={FetchPatientLogs} showLogModal={showLogModal} />   
+                            }
 
                         </div>
                     </div>
