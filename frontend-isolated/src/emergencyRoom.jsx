@@ -7,6 +7,7 @@ import { useUser } from './auth/UserContext';
 import secureFetch from './auth/SecureFetch';
 import Signature from '@lemonadejs/signature/dist/react';
 import CheckboxGroup from './util/CheckBoxGroup';
+import AdmissionInfo from './AdmissionInfo';
 
 function AddItem({ refreshAdmissions }) {
   const { serverUrl } = useConfig();
@@ -201,6 +202,7 @@ function AddItem({ refreshAdmissions }) {
 
 
 function Admissions ({ showUpdateModal, 
+                      showAdmissionInfoModal,
                       patientAdmissions, 
                       loading, 
                       FetchPatientAdmissions, 
@@ -1829,6 +1831,16 @@ function App() {
     setMedicalRecordModalVisible(false);
   }
 
+  const showAdmissionInfoModal = (item) => {
+    console.log('showAdmissionInfoModal', item);
+    setCurrentItemID(item);
+    setAdmissionInfoModalVisible(true);
+  }
+
+  const closeAdmissionInfoModal = () => {
+    setAdmissionInfoModalVisible(false);
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'row', height: '100vh', position: 'relative' }}>
       <Sidebar />
@@ -1837,6 +1849,7 @@ function App() {
           {/* Inventory */}
           <Admissions
             showUpdateModal={showUpdateModal}
+            showAdmissionInfoModal={showAdmissionInfoModal}
             patientAdmissions={patientAdmissions}
             loading={loading}
             FetchPatientAdmissions={FetchPatientAdmissions}
@@ -1905,6 +1918,14 @@ function App() {
         <MedicalRecordModal
           patientID={currentItemID}
           closeModal={closeMedicalRecordModal}
+        />
+      )}
+
+      {/* Modal for Admission Info */}
+      {admissionInfoModalVisible && (currentItemID !== null) && (
+        <AdmissionInfo
+          admissionID={currentItemID}
+          closeModal={closeAdmissionInfoModal}
         />
       )}
     </div>
