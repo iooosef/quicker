@@ -12,40 +12,35 @@ import AdmissionInfo from './AdmissionInfo';
 function AddItem({ refreshAdmissions }) {
   const { serverUrl } = useConfig();
   const [loading, setLoading] = useState(false);
-  const [isSupplyQty, setIsSupplyQty] = useState('');
+  const [model, setModel] = useState({});
+  const [bedLocs, setBedLocs] = useState([]);
+  const [bedLoading, setBedLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
-  const validateModel = (supply) => {
-    const foundErrors = validateAdmissionModel(supply);
+  const validateModel = () => {
+    const foundErrors = validateNewAdmissionModel(model);
     setErrors(foundErrors);
     return Object.keys(foundErrors).length === 0;
   };
 
-  const AddSupply = (e) => {
+  const AddAdmission = (e) => {
     e.preventDefault();
-
     if (!serverUrl) return;
-
-    const formData = new FormData(e.target);
-    const supply = {
-      supplyName: formData.get("supplyName"),
-      supplyType: formData.get("supplyType"),
-      supplyQty: formData.get("supplyQty"),
-      supplyPrice: formData.get("supplyPrice"),
-    };
-
-    console.log(supply)
-    if (!validateModel(supply)) return;
+    if (!validateModel()) return;
     setLoading(true)
 
+    const now = new Date();
+    const status = model.patientBedLocCode === 'LOC000' ? 'pre-admission' : 'admitted-ER';
     const payload = {
-      supplyName: supply.supplyName,
-      supplyType: supply.supplyType,
-      supplyQty: supply.supplyQty,
-      supplyPrice: supply.supplyPrice
+      patientName: model.patientName,
+      patientTriage: model.patientTriage,
+      patientStatus: status,
+      patientBedLocCode: model.patientBedLocCode,
+      patientAdmitOn: now.toISOString(),
+      patientERCause: model.patientERCause
     };
 
-    secureFetch(`${serverUrl}/supplies/supply`, 
+    secureFetch(`${serverUrl}/patient-admissions/admission`, 
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -60,12 +55,14 @@ function AddItem({ refreshAdmissions }) {
         const errorString = responseBody.map((error) => error.message).join('\n');
         alert(errorString);
       } else {        
-        alert(`Successfully added ${supply.supplyQty}pcs ` + 
-              `of ${supply.supplyName} ` + 
-              ` (${supply.supplyType}) ` + 
-              `for ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PHP' }).format(supply.supplyPrice)} each.`);
+        alert(`Successfully added new patient admission.`);
         refreshAdmissions();
-        e.target.reset();
+        setModel({
+          patientTriage: '',
+          patientName: '',
+          patientBedLocCode: '',
+          patientERCause: ''
+        });
       }
     })
     .catch(error => console.error(error)).finally(() => {
@@ -73,75 +70,65 @@ function AddItem({ refreshAdmissions }) {
     })
   }
 
+  const getActiveBedLocs = () => {
+    if (!serverUrl) return;
+    setBedLoading(true)
+    secureFetch(`${serverUrl}/beds/search?` + new URLSearchParams({
+      query: 'available',
+      page: 0,
+      size: 50
+    }).toString(), 
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+    })
+    .then(response => response.json())
+    .then(data => {
+      setBedLocs(data)
+    })
+    .catch(error => console.error(error)).
+    finally(() => {
+      setBedLoading(false)
+    })    
+  }
+  useEffect(() => {
+    getActiveBedLocs();
+  }, []);
+
   return (
     <div className="add-item-container">
-      <h4 className="text-2xl mb-2">Add Item to Inventory</h4>
-      {/* {errors && <p className="error-message">{errors}</p>} */}
-      <form onSubmit={AddSupply}>
+      <h4 className="text-2xl mb-2">Admit a patient</h4>
+      <form onSubmit={AddAdmission}>
         <div className="table-container">
           <table>
             <tbody>
               <tr className='flex gap-2 pt-2'>
                 
-                <td className='flex-1'>                  
+                <td className='flex-none max-w-20'>                  
                   <label>
                     <div className="label hidden">
                       <span className="label-text-alt"></span>
                     </div>
                     <div className="form-control">
-                      <input type="text" name='supplyName' placeholder='' 
-                        className={"input input-floating peer " + 
-                          (errors.supplyName && "is-invalid")} />
-                      <span className="input-floating-label">Name</span>
+                      <select type="text" name='patientTriage' placeholder='' 
+                        className={"select input-floating peer " + 
+                          (errors.patientTriage && "is-invalid")}
+                          onChange={e => setModel(
+                            prev => ({...prev, patientTriage: e.target.value})
+                          )} >
+                        <option value=''></option>
+                        <option value='1'>1</option>
+                        <option value='2'>2</option>
+                        <option value='3'>3</option>
+                        <option value='4'>4</option>
+                        <option value='5'>5</option>
+                      </select>
+                      <span className="input-floating-label">Triage</span>
                     </div>
                     <div className="label">
-                      {errors.supplyName && (
-                        <span className="label-text-alt">{errors.supplyName}</span>
-                      )}
-                    </div>
-                  </label>
-                </td>
-
-                <td className='flex-1'>                  
-                  <label>
-                    <div className="label hidden">
-                      <span className="label-text-alt"></span>
-                    </div>
-                    <div className="form-control">
-                      <input type="text" name='supplyType' list='typeOptions' placeholder='' 
-                        className={"input input-floating peer " + 
-                          (errors.supplyType && "is-invalid")}
-                          onChange={(e) => {
-                            const isSupply = e.target.value.includes("supply:");
-                            if (!isSupply) {
-                              setIsSupplyQty(-1)
-                            } else {
-                              setIsSupplyQty('')
-                            }
-                          }} />
-                      <datalist id="typeOptions">
-                        <option value="test:Laboratory"></option>
-                        <option value="test:Imaging"></option>
-                        <option value="test:Diagnostic"></option>
-                        <option value="treatment:Treatment"></option>
-                        <option value="supply:Respiratory"></option>
-                        <option value="supply:Wound_Care"></option>
-                        <option value="supply:IV"></option>
-                        <option value="supply:Medication"></option>
-                        <option value="supply:Monitoring"></option>
-                        <option value="supply:Diagnostic"></option>
-                        <option value="supply:Resuscitation"></option>
-                        <option value="supply:PPE"></option>
-                        <option value="supply:Orthopedic"></option>
-                        <option value="supply:PatientTransport"></option>
-                        <option value="supply:Surgical"></option>
-                        <option value="supply:Miscellaneous"></option>
-                      </datalist>
-                      <span className="input-floating-label">Type</span>
-                    </div>
-                    <div className="label">
-                      {errors.supplyType && (
-                        <span className="label-text-alt">{errors.supplyType}</span>
+                      {errors.patientTriage && (
+                        <span className="label-text-alt">{errors.patientTriage}</span>
                       )}
                     </div>
                   </label>
@@ -153,36 +140,67 @@ function AddItem({ refreshAdmissions }) {
                       <span className="label-text-alt"></span>
                     </div>
                     <div className="form-control">
-                      <input type="number" name='supplyQty' placeholder='' 
+                      <input type="text" name='patientName' placeholder='' 
                         className={"input input-floating peer " + 
-                          (errors.supplyQty && "is-invalid")} 
-                          value={isSupplyQty}
-                          onChange={e => setIsSupplyQty(e.target.value)}
-                          disabled={isSupplyQty === -1} />
-                      <span className="input-floating-label">Quantity</span>
+                          (errors.patientName && "is-invalid")}
+                          onChange={e => setModel(
+                            prev => ({...prev, patientName: e.target.value})
+                          )} />
+                      <span className="input-floating-label">Name</span>
                     </div>
                     <div className="label">
-                      {errors.supplyQty && (
-                        <span className="label-text-alt">{errors.supplyQty}</span>
+                      {errors.patientName && (
+                        <span className="label-text-alt">{errors.patientName}</span>
                       )}
                     </div>
                   </label>
                 </td>
 
+                <td className='flex-none max-w-32'>                  
+                  <label>
+                    <div className="label hidden">
+                      <span className="label-text-alt"></span>
+                    </div>
+                    <div className="form-control">
+                      <input type="text" list='bedLocOptions' name='patientBedLocCode' placeholder='' 
+                        className={"input input-floating peer " + 
+                          (errors.patientBedLocCode && "is-invalid")}
+                          onChange={e => setModel(
+                            prev => ({...prev, patientBedLocCode: e.target.value})
+                          )} />
+                        <datalist id="bedLocOptions">                          
+                          <option value='LOC000'>unassigned</option>
+                          {bedLocs.content && bedLocs.content.map((item) => (
+                            <option key={item.bedLocCode} value={item.bedLocCode}>{item.bedLocCode}</option>
+                          ))}
+                        </datalist>
+                      <span className="input-floating-label">Bed Location</span>
+                    </div>
+                    <div className="label">
+                      {errors.patientBedLocCode && (
+                        <span className="label-text-alt">{errors.patientBedLocCode}</span>
+                      )}
+                    </div>
+                  </label>
+                </td>
+                
                 <td className='flex-1'>                  
                   <label>
                     <div className="label hidden">
                       <span className="label-text-alt"></span>
                     </div>
                     <div className="form-control">
-                      <input type="number" name='supplyPrice' placeholder='' 
+                      <input type="text" name='patientERCause' placeholder='' 
                         className={"input input-floating peer " + 
-                          (errors.supplyPrice && "is-invalid")} />
-                      <span className="input-floating-label">Price</span>
+                          (errors.patientERCause && "is-invalid")} 
+                          onChange={e => setModel(
+                            prev => ({...prev, patientERCause: e.target.value})
+                          )} />
+                      <span className="input-floating-label">Admission Cause</span>
                     </div>
                     <div className="label">
-                      {errors.supplyPrice && (
-                        <span className="label-text-alt">{errors.supplyPrice}</span>
+                      {errors.patientERCause && (
+                        <span className="label-text-alt">{errors.patientERCause}</span>
                       )}
                     </div>
                   </label>
@@ -251,7 +269,7 @@ function Admissions ({ showUpdateModal,
         </div>
       
 
-      {/* Inventory Table */}
+      {/* Admissions Table */}
       <table>
         <thead>
           <tr>
@@ -298,9 +316,12 @@ function Admissions ({ showUpdateModal,
                   }> {item.patientStatus} </span>
 
                 </td>
-                <td className='text-black flex justify-center'>
+                <td className='text-black flex justify-center gap-2'>
                   <button type="button" onClick={() => showUpdateModal(item.id)} className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit'>
                     <span className="icon-[tabler--pencil] text-neutral-500"></span>
+                  </button>
+                  <button type="button" onClick={() => showAdmissionInfoModal(item.id)} className='btn btn-soft btn-secondary !p-1 min-h-fit !h-fit'>
+                    <span className="icon-[tabler--info-circle] text-neutral-500 size-6"></span>
                   </button>
                 </td>
               </tr>
@@ -1563,6 +1584,19 @@ function MedicalRecordModal( {patientID, closeModal} ) {
 
 }
   
+function validateNewAdmissionModel(model) {
+  const foundErrors = {};
+  if (!model.patientName) {
+    foundErrors.patientName = 'Name is required. If unknown, use descriptive name';
+  } 
+  if (!model.patientTriage) {
+    foundErrors.patientTriage = 'Triage is required';
+  } 
+  if (!model.patientERCause) {
+    foundErrors.patientERCause = 'Cause of admission is required';
+  } 
+  return foundErrors;
+}
 
 function validateAdmissionModel(model) {
   const foundErrors = {};
@@ -1728,6 +1762,7 @@ function App() {
   const [newPatientModalVisible, setNewPatientModalVisible] = useState(false);
   const [consentModalVisible, setConsentModalVisible] = useState(false);
   const [medicalRecordModalVisible, setMedicalRecordModalVisible] = useState(false);
+  const [admissionInfoModalVisible, setAdmissionInfoModalVisible] = useState(false);
   const [currentItemID, setCurrentItemID] = useState(null);
   const [patientID, setPatientID] = useState(null);
   
