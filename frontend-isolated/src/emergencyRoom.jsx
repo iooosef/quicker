@@ -6,6 +6,7 @@ import { useConfig } from './util/ConfigContext';
 import { useUser } from './auth/UserContext';
 import secureFetch from './auth/SecureFetch';
 import Signature from '@lemonadejs/signature/dist/react';
+import CheckboxGroup from './util/CheckBoxGroup';
 
 function AddItem({ refreshAdmissions }) {
   const { serverUrl } = useConfig();
@@ -332,12 +333,13 @@ function Admissions ({ showUpdateModal,
   );
 };
 
-function Modal({ id, closeModal, refreshTable, showAssignPatientIDModal, showConsentModal }) {
+function Modal({ id, closeModal, refreshTable, showAssignPatientIDModal, showConsentModal, showMedicalRecordModal }) {
   const { serverUrl } = useConfig();
   const [loading, setLoading] = useState(false)
   const [model, setModel] = useState({});
   const [errors, setErrors] = useState({});
   const [hasConsent, setHasConsent] = useState(false);
+  const [hasMedicalRecord, setHasMedicalRecord] = useState(false);
 
   const validateModel = () => {
     const foundErrors = validateAdmissionModel(model);
@@ -431,10 +433,37 @@ function Modal({ id, closeModal, refreshTable, showAssignPatientIDModal, showCon
     });
   }
 
+  const medicalRecordExist = () => {
+    if (!serverUrl) return;
+    setLoading(true);
+    secureFetch(`${serverUrl}/patients-medical-info/${model.patientID}?`, 
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json"},
+      credentials: 'include'
+    })
+    .then(async (response) => {
+      if(response.status === 200) {
+        setHasMedicalRecord(true);
+      } else {        
+        setHasMedicalRecord(false);
+      }
+    })
+    .catch(error => console.error(error)).
+    finally(() => {
+      setLoading(false);
+    });
+  }
+
   useEffect(() => {
     FetchAdmission();
     admissionConsentExist();
   }, [id]);
+  useEffect(() => {
+    if (model.patientID) {
+      medicalRecordExist();
+    }
+  }, [model]);
 
   return (
     <div className='qe-modal-overlay'>      
@@ -545,6 +574,9 @@ function Modal({ id, closeModal, refreshTable, showAssignPatientIDModal, showCon
               }
               {model.patientID && !isPatientOutOfER(model.patientStatus) && !hasConsent &&
                 <button onClick={() => showConsentModal(model.id)} className="btn btn-accent">Sign Informed Consent</button>
+              }
+              {model.patientID && !isPatientOutOfER(model.patientStatus) && !hasMedicalRecord &&
+                <button onClick={() => showMedicalRecordModal(model.patientID)} className="btn btn-accent">Add Medical Record</button>
               }
               {!isPatientOutOfER(model.patientStatus) &&
                 <button onClick={UpdateModel} className="btn btn-primary">Update</button>
@@ -1257,6 +1289,277 @@ function ConsentModal( {admissionID, closeModal} ) {
   )
 
 }
+
+function MedicalRecordModal( {patientID, closeModal} ) {
+  const { serverUrl } = useConfig();
+  const [loading, setLoading] = useState(false)
+  const [model, setModel] = useState({});
+  const [checkBoxGroup, setCheckBoxGroup] = useState({});
+  const [errors, setErrors] = useState({});
+  
+  const [checkedItems, setCheckedItems] = useState([]);
+  const [inputValue, setInputValue] = useState('');
+
+  useEffect(() => {
+    setModel((prev) => ({
+      ...prev,
+      patientMedNfoHeight: convertToTotalFeet(prev.heightFeet, prev.heightInches),
+    }));
+  }, [model.heightFeet, model.heightInches]);
+
+  const handleCheckboxChange = (item, isChecked) => {
+    setCheckedItems((prev) =>
+      isChecked ? [...prev, item] : prev.filter((i) => i !== item)
+    );
+  };
+
+  useEffect(() => {    
+    const joinedCheck = checkedItems?.join(', ')
+    setCheckBoxGroup(`${joinedCheck}, ${inputValue}`);
+  }, [checkedItems, inputValue])
+
+  const validateModel = () => {
+    const foundErrors = validateMedicalRecord(model);
+    setErrors(foundErrors);
+    return Object.keys(foundErrors).length === 0;
+  };
+
+  const AddMedRecord = () => {
+    if (!serverUrl) return;
+    if (!validateModel()) return;
+    setLoading(true)
+    
+    const payload = {
+      patientID:patientID,
+      patientMedNfoHeight: model.patientMedNfoHeight,
+      patientMedNfoWeight: model.patientMedNfoWeight,
+      patientMedNfoAllergies: model.patientMedNfoAllergies,
+      patientMedNfoMedications: model.patientMedNfoMedications,
+      patientMedNfoComorbidities: checkBoxGroup,
+      patientMedNfoHistory: model.patientMedNfoHistory,
+      patientMedNfoImmunization: model.patientMedNfoImmunization,
+      patientMedNfoFamilyHistory: model.patientMedNfoFamilyHistory,
+      patientMedNfoCOVIDVaxx: model.patientMedNfoCOVIDVaxx
+    }
+
+    secureFetch(`${serverUrl}/patients-medical-info/record`, 
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      })
+      .then(async (response) => {
+        const responseBody = await response.json()
+        console.log(response)
+        if(response.status !== 200) {
+          console.log(responseBody);
+          const errorString = responseBody.map((error) => error.message).join('\n');
+          alert(errorString);
+        } else {
+          console.log(responseBody)
+          alert(`Successfully added patient medical record for Patient No. ${patientID}`);
+          closeModal();
+        }
+      })
+      .catch(error => console.error(error)).
+      finally(() => {
+        setLoading(false)
+      });
+
+  }
+
+  return (
+    <div className='qe-modal-overlay'>   
+      { loading ? (
+          <span>Loading...</span>
+          ) : (
+            <div className="qe-modal gap-4 !w-full !max-w-2xl" style={{ display: 'flex' }}>   
+              <h4 className="text-2xl mb-2 text-nowrap">Medical Record for Patient No. {patientID}</h4>
+              
+              <div className='flex gap-4'>
+                <div className='w-full form-control'>
+                  <label className="input-group w-full max-w-full">
+                    <span className={"input-group-text font-bold uppercase text-nowrap " + 
+                      (errors.patientMedNfoHeight && "text-error")
+                    }>Height</span>
+                    <div className='flex gap-2'>  
+
+                      <input type="number" placeholder='feet' className={"!border-s !ms-2 input grow !text-black " + 
+                        (errors.patientMedNfoHeight && "is-invalid text-error")
+                      } value={model.heightFeet || ""} 
+                      onChange={e => setModel((prev) => ({
+                        ...prev,
+                        heightFeet: e.target.value
+                      }))}/>        
+
+                      <input type="number" placeholder='inches' className={"!border-s input grow !text-black " + 
+                        (errors.patientMedNfoHeight && "is-invalid text-error")
+                      } value={model.heightInches || ""} 
+                      onChange={e => setModel((prev) => ({
+                        ...prev,
+                        heightInches: e.target.value
+                      }))}/>
+
+                    </div>
+                  </label>
+                  {errors.patientMedNfoHeight && (
+                    <div className="label">
+                      <span className="label-text-alt text-error">{errors.patientMedNfoHeight}</span>
+                    </div>
+                    )} 
+                </div>
+                
+                <div className='w-full form-control'>
+                  <label className="input-group w-full max-w-full">
+                    <span className={"input-group-text font-bold uppercase text-nowrap " + 
+                      (errors.patientMedNfoWeight && "text-error")
+                    }>Weight (kg)</span>
+                    <input type="number" className={"input grow !text-black " + 
+                      (errors.patientMedNfoWeight && "is-invalid text-error")
+                    } value={model.patientMedNfoWeight || ""} 
+                    onChange={e => setModel((prev) => ({
+                      ...prev,
+                      patientMedNfoWeight: e.target.value
+                    }))}/>
+                  </label>
+                  {errors.patientMedNfoWeight && (
+                    <div className="label">
+                      <span className="label-text-alt text-error">{errors.patientMedNfoWeight}</span>
+                    </div>
+                    )} 
+                </div>
+              </div>
+                    
+              <div className='w-full form-control'>
+                <label className="input-group w-full max-w-full">
+                  <span className="input-group-text font-bold uppercase text-nowrap ">Allergies</span>
+                  <textarea className="textarea grow !text-black " value={model.patientMedNfoAllergies || ""} 
+                  onChange={e => setModel((prev) => ({
+                    ...prev,
+                    patientMedNfoAllergies: e.target.value
+                  }))}/>
+                </label>
+              </div>
+                    
+              <div className='w-full form-control'>
+                <label className="input-group w-full max-w-full">
+                  <span className="input-group-text font-bold uppercase text-nowrap ">
+                    Medications
+                  </span>
+                  <textarea className="textarea grow !text-black " value={model.patientMedNfoMedications || ""} 
+                  onChange={e => setModel((prev) => ({
+                    ...prev,
+                    patientMedNfoMedications: e.target.value
+                  }))}/>
+                </label>
+              </div>
+
+              <h4 className="text-xl font-bold uppercase">Comorbidities</h4>
+              <div className='grid grid-cols-2 gap-4'>
+                <CheckboxGroup
+                  options={['Heart disease', 
+                            'High blood pressure', 
+                            'Lung disease', 
+                            'Diabetes', 
+                            'Kidney disease',
+                            'Stroke',
+                            'Anemia']}
+                  groupTitle=""
+                  onChange={handleCheckboxChange}
+                />
+                <CheckboxGroup
+                  options={['Obesity', 
+                            'Dementia', 
+                            'Hepatitis', 
+                            'Arthritis', 
+                            'Stomach disease', 
+                            'Liver disease',
+                            'Depression']}
+                  groupTitle=""
+                  onChange={handleCheckboxChange}
+                />
+
+                <div className='w-full form-control col-span-2'>
+                  <label className="input-group w-full max-w-full">
+                    <span className="input-group-text font-bold uppercase text-nowrap ">Other Comorbidities</span>
+                    <input type='text' className="input grow !text-black " value={inputValue || ""}
+                    onChange={e => setInputValue(e.target.value)} />
+                  </label>
+                </div>
+              </div>
+                    
+              <div className='w-full form-control'>
+                <label className="input-group w-full max-w-full">
+                  <span className="input-group-text font-bold uppercase text-nowrap ">
+                    Medical History
+                  </span>
+                  <textarea className="textarea grow !text-black " value={model.patientMedNfoHistory || ""} 
+                  onChange={e => setModel((prev) => ({
+                    ...prev,
+                    patientMedNfoHistory: e.target.value
+                  }))}/>
+                </label>
+                <div className="label">
+                  <span className="label-text-alt"></span>
+                  <span className="label-text-alt">Hospitalizations, Therapies, Treatments, etc.</span>
+                </div>
+              </div>
+                    
+              <div className='w-full form-control'>
+                <label className="input-group w-full max-w-full">
+                  <span className="input-group-text font-bold uppercase text-nowrap ">
+                    Immunization
+                  </span>
+                  <textarea className="textarea grow !text-black " value={model.patientMedNfoImmunization || ""} 
+                  onChange={e => setModel((prev) => ({
+                    ...prev,
+                    patientMedNfoImmunization: e.target.value
+                  }))}/>
+                </label>
+              </div>
+                    
+              <div className='w-full form-control'>
+                <label className="input-group w-full max-w-full">
+                  <span className="input-group-text font-bold uppercase text-nowrap ">
+                    Family Medical History
+                  </span>
+                  <textarea className="textarea grow !text-black " value={model.patientMedNfoFamilyHistory || ""} 
+                  onChange={e => setModel((prev) => ({
+                    ...prev,
+                    patientMedNfoFamilyHistory: e.target.value
+                  }))}/>
+                </label>
+              </div>
+                
+              <div className='w-full form-control'>
+                <label className="input-group w-full max-w-full">
+                  <span className={"input-group-text font-bold uppercase text-nowrap " + 
+                    (errors.patientMedNfoCOVIDVaxx && "text-error")
+                  }>COVID-19 Vaccinations</span>
+                  <textarea className={"textarea grow !text-black " + 
+                    (errors.patientMedNfoCOVIDVaxx && "is-invalid text-error")
+                  } value={model.patientMedNfoCOVIDVaxx || ""} 
+                  onChange={e => setModel((prev) => ({
+                    ...prev,
+                    patientMedNfoCOVIDVaxx: e.target.value
+                  }))}/>
+                </label>
+                {errors.patientMedNfoCOVIDVaxx && (
+                  <div className="label">
+                    <span className="label-text-alt text-error">{errors.patientMedNfoCOVIDVaxx}</span>
+                  </div>
+                  )} 
+                </div>
+                <button onClick={AddMedRecord} className="btn btn-secondary">Add Medical Record</button>  
+              <button onClick={closeModal} className="btn btn-secondary">Close</button>
+            </div>
+          )
+      }
+    </div>
+  )
+
+}
   
 
 function validateAdmissionModel(model) {
@@ -1288,6 +1591,20 @@ function validatePatientModel(model) {
   if (!model.patientGender) {
     foundErrors.patientGender = 'Gender is required';
   }
+  return foundErrors;
+}
+
+function validateMedicalRecord(model) {
+  const foundErrors = {};
+  if (!model.patientMedNfoHeight) {
+    foundErrors.patientMedNfoHeight = 'Height is required';
+  } 
+  if (!model.patientMedNfoWeight) {
+    foundErrors.patientMedNfoWeight = 'Weight is required';
+  } 
+  if (!model.patientMedNfoCOVIDVaxx) {
+    foundErrors.patientMedNfoCOVIDVaxx = 'COVID-19 Vaccination Info is required. Write NONE if no vaccination.';
+  } 
   return foundErrors;
 }
 
@@ -1391,6 +1708,16 @@ const isPatientOutOfER = (status) => {
          status === "discharged" || status === "admitted-to-ward" || status?.includes("transferred");
 }
 
+const convertToTotalFeet = (ft, inches) => {
+  return ft + inches / 12;
+}
+
+const extractFeetAndInches = (totFt) => {
+  let feet = Math.floor(totFt);  
+  let inches = Math.round((totFt - feet) * 12);  
+  return { feet, inches };
+}
+
 // App Component (Main Entry Point)
 function App() {
   const [modalVisible, setModalVisible] = useState(false);
@@ -1398,6 +1725,7 @@ function App() {
   const [patientIDModalVisible, setPatientIDModalVisible] = useState(false);
   const [newPatientModalVisible, setNewPatientModalVisible] = useState(false);
   const [consentModalVisible, setConsentModalVisible] = useState(false);
+  const [medicalRecordModalVisible, setMedicalRecordModalVisible] = useState(false);
   const [currentItemID, setCurrentItemID] = useState(null);
   const [patientID, setPatientID] = useState(null);
   
@@ -1490,6 +1818,17 @@ function App() {
     setConsentModalVisible(false);
   }
 
+  const showMedicalRecordModal = (item) => {
+    console.log('showMedicalRecordModal', item);
+    setCurrentItemID(item);
+    setMedicalRecordModalVisible(true);
+    closeModal();
+  }
+
+  const closeMedicalRecordModal = () => {
+    setMedicalRecordModalVisible(false);
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'row', height: '100vh', position: 'relative' }}>
       <Sidebar />
@@ -1521,6 +1860,7 @@ function App() {
           refreshTable={FetchPatientAdmissions}
           showAssignPatientIDModal={showAssignPatientIDModal}
           showConsentModal={showConsentModal}
+          showMedicalRecordModal={showMedicalRecordModal}
         />
       )}
 
@@ -1557,6 +1897,14 @@ function App() {
         <ConsentModal
           admissionID={currentItemID}
           closeModal={closeConsentModal}
+        />
+      )}
+
+      {/* Modal for Medical Record */}
+      {medicalRecordModalVisible && (currentItemID !== null) && (
+        <MedicalRecordModal
+          patientID={currentItemID}
+          closeModal={closeMedicalRecordModal}
         />
       )}
     </div>
