@@ -177,7 +177,9 @@ public class PatientBillingController {
     @PutMapping(value="/billing/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> updatePatientBilling(@PathVariable int id, @RequestBody PatientBilling model) {
         List errors = new ArrayList();
-        errors.addAll(validate(model.getAdmissionID(), model));
+        errors.addAll(validate(model.getAdmissionID(), model));var originalBilling = patientBillingService.getPatientBillingByAdmissionIDAndDetails(model.getAdmissionID(), model.getBillingItemDetails());
+        var targetSupply = supplyService.getSupplyByName(model.getBillingItemDetails());
+        boolean isSupplySupplyType = targetSupply.isPresent() && targetSupply.get().getSupplyType().contains("supply:");
         boolean toBeDeleted = model.getBillingItemQty() <= 0;
         boolean isUndeletable = UNDELETEABLE_DETAILS.contains(model.getBillingItemDetails());
         if (toBeDeleted && isUndeletable) {
@@ -187,21 +189,14 @@ public class PatientBillingController {
             error.put("target", "model");
             errors.add(error);
         }
-        if (!toBeDeleted && model.getBillingItemQty() < 0) {
+        if (isSupplySupplyType && !toBeDeleted && model.getBillingItemQty() < 0) {
             HashMap<String, String> error = new HashMap<>();
             error.put("type", "invalid_input_error");
             error.put("message", "Quantity must be greater than zero");
-            error.put("target", "model");
+            error.put("target", "billingItemQty");
             errors.add(error);
         }
-        if (!errors.isEmpty()) {
-            return ResponseEntity.status(400).body(errors);
-        }
 
-
-        var originalBilling = patientBillingService.getPatientBillingByAdmissionIDAndDetails(model.getAdmissionID(), model.getBillingItemDetails());
-        var targetSupply = supplyService.getSupplyByName(model.getBillingItemDetails());
-        boolean isSupplySupplyType = targetSupply.isPresent() && targetSupply.get().getSupplyType().contains("supply:");
         if (toBeDeleted) {
             patientBillingService.deletePatientBilling(id);
             // recover the supply qty if the billing item is a supply
@@ -213,23 +208,35 @@ public class PatientBillingController {
             return ResponseEntity.ok("Deleted " + model.getBillingItemDetails() + " billing item.");
         }
 
+        boolean isBillingQtyChanged = originalBilling.isPresent() && originalBilling.get().getBillingItemQty() != model.getBillingItemQty();
+        boolean isBillingQtyBigger = originalBilling.isPresent() && originalBilling.get().getBillingItemQty() < model.getBillingItemQty();
+        Integer originalSupplyQty = targetSupply.get().getSupplyQty();
+        if (isBillingQtyChanged && targetSupply.isPresent() && isSupplySupplyType) {
+            int newSupplyQty;
+            if (isBillingQtyBigger) {
+                // if the billing qty is increased, deduct the used qty from the supply
+                newSupplyQty = originalSupplyQty - (model.getBillingItemQty() - originalBilling.get().getBillingItemQty());
+            } else {
+                // if the billing qty is decreased, add the recovered qty to the supply
+                newSupplyQty = originalSupplyQty + (originalBilling.get().getBillingItemQty() - model.getBillingItemQty());
+            }
+            // Ensure the supply qty does not go negative
+            if (newSupplyQty < 0) {
+                HashMap<String, String> error = new HashMap<>();
+                error.put("type", "invalid_input_error");
+                error.put("message", "Insufficient supply quantity.");
+                error.put("target", "model");
+                errors.add(error);
+            }
+            targetSupply.get().setSupplyQty(newSupplyQty);
+        }
+        if (!errors.isEmpty()) {
+            return ResponseEntity.status(400).body(errors);
+        }
+
         var result = patientBillingService.updatePatientBilling(id, model);
         if (result != null) {
-            // if a Supply billing's qty is change, update the recovered or used amount of the supply
-            boolean isBillingQtyChanged = originalBilling.isPresent() && originalBilling.get().getBillingItemQty() != model.getBillingItemQty();
-            boolean isBillingQtyBigger = originalBilling.isPresent() && originalBilling.get().getBillingItemQty() < model.getBillingItemQty();
-            Integer originalSupplyQty = targetSupply.get().getSupplyQty();
-            if (isBillingQtyChanged && targetSupply.isPresent() && isSupplySupplyType && isBillingQtyBigger) {
-                // if the billing qty is increased, deduct the used qty from the supply
-                Integer newSupplyQty = originalSupplyQty - (model.getBillingItemQty() - originalBilling.get().getBillingItemQty());
-                targetSupply.get().setSupplyQty(newSupplyQty);
-                supplyService.updateSupply(targetSupply.get().getId(), targetSupply.get());
-            } else if (isBillingQtyChanged && targetSupply.isPresent() && isSupplySupplyType && !isBillingQtyBigger) {
-                // if the billing qty is decreased, add the recovered qty to the supply
-                Integer newSupplyQty = originalSupplyQty + (originalBilling.get().getBillingItemQty() - model.getBillingItemQty());
-                targetSupply.get().setSupplyQty(newSupplyQty);
-                supplyService.updateSupply(targetSupply.get().getId(), targetSupply.get());
-            }
+            supplyService.updateSupply(targetSupply.get().getId(), targetSupply.get());
         }
 
         return ResponseEntity.ok(result);
