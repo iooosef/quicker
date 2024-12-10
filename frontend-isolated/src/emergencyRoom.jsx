@@ -344,7 +344,7 @@ function Admissions ({ showUpdateModal,
             </span>
             <button 
               onClick={NextPage} 
-              disabled={currentPage === patientAdmissions.totalPages}
+              disabled={patientAdmissions.totalPages === 1 || (currentPage === patientAdmissions.totalPages)}
             >
               Next
             </button>
@@ -987,7 +987,7 @@ function AssignPatientIDModal( {admissionID, closeModal, refreshTable, showAssig
                   </span>
                   <button 
                     onClick={NextPage} 
-                    disabled={currentPage === patients.totalPages}
+                    disabled={patients.totalPages === 1 || (currentPage === patients.totalPages)}
                   >
                     Next
                   </button>

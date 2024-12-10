@@ -299,7 +299,7 @@ function Inventory ({ showUpdateModal,
             </span>
             <button 
               onClick={NextPage} 
-              disabled={currentPage === supplies.totalPages}
+              disabled={supplies.totalPages === 1 || (currentPage === supplies.totalPages)}
             >
               Next
             </button>
