@@ -1,3 +1,4 @@
+USE quicker
 -- Insert script for populating the Beds table
 
 -- Inserting 10 active beds

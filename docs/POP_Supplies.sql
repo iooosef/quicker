@@ -1,3 +1,4 @@
+USE quicker
 INSERT INTO Supplies (supplyName, supplyType, supplyQty, supplyPrice)
 VALUES
 -- Tests
