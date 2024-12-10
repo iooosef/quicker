@@ -76,7 +76,8 @@ function AdmissionsBilling ({ patientAdmissionsData,
                               setCurrentPage,
                               itemsPerPage,
                               // modal visibility methods
-                              showBillingModal
+                              showBillingModal,
+                              showOrderModal
                             }) {  
 
   const refreshAdmissions = () => {
@@ -163,16 +164,22 @@ function AdmissionsBilling ({ patientAdmissionsData,
                       : 'badge-neutral')
                   }>{item.patientBillingStatus}</span>
                 </td>
-                <td className='text-black flex justify-center gap-2'>
-                  <button type="button" onClick={() => showBillingModal(item.id)} className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit'>
+                <td className='text-black flex gap-2'>
+                  <button type="button" onClick={() => showBillingModal(item.id)} className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit flex-1'>
                     <span className="">Bill</span>
                   </button>
-                  <button type="button" className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit'>
-                    <span className="">Order</span>
-                  </button>
-                  <button type="button" className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit'>
-                    <span className="">Discounts</span>
-                  </button>
+                  {isPatientOutOfER(item.patientStatus) && (
+                      <button type="button" onClick={() => showOrderModal(item.id)} className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit'>
+                        <span className="">Order</span>
+                      </button>
+                    )
+                  }
+                  {isPatientOutOfER(item.patientStatus) && (
+                      <button type="button" className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit'>
+                        <span className="">Discounts</span>
+                      </button>
+                    )
+                  }
                 </td>
               </tr>
             ))}
@@ -251,11 +258,16 @@ function BillingModal({ admissionID, closeModal }) {
     }
   }
 
-  const handleEditQty = (id, qty) => {
+  const handleEditQty = (id, qty, details) => {
+    if (details === 'Emergency Room Fee') {
+      alert("It's not possible to change the quantity for Emergency Room Fee.");
+      return;
+    }
+  
     setEditState((prevState) =>
       prevState.id === id
-        ? { id: null, newQty: 0 } 
-        : { id, newQty: qty } 
+        ? { id: null, newQty: 0 } // Toggle off if the same ID is clicked
+        : { id, newQty: qty } // Set new edit state
     );
   };
 
@@ -355,7 +367,7 @@ function BillingModal({ admissionID, closeModal }) {
                           .format(((item.billingItemQty ?? 0) * (item.billingItemPrice ?? 0)) - (item.billingItemDiscount ?? 0))                        
                         }</td>
                         <td className='text-black flex justify-center'>
-                          <button type="button" onClick={() => handleEditQty(item.id, item.billingItemQty)} className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit'>
+                          <button type="button" onClick={() => handleEditQty(item.id, item.billingItemQty, item.billingItemDetails)} className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit'>
                             <span className="icon-[tabler--pencil] text-neutral-500"></span>
                           </button>
                         </td>
@@ -395,6 +407,205 @@ function BillingModal({ admissionID, closeModal }) {
     }
     </div>
   );
+}
+
+function OrderModal({ admissionID, closeModal }) {
+  const { serverUrl } = useConfig();
+  const [loading, setLoading] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [treatments, setTreatments] = useState({});
+  const [tests, setTests] = useState({});
+  const [supplies, setSupplies] = useState({});
+
+  const [selectedTreatment, setSelectedTreatment] = useState('');
+  const [selectedSupply, setSelectedSupply] = useState('');
+  const [selectedTest, setSelectedTest] = useState('');
+  const [treatmentQuantity, setTreatmentQuantity] = useState(1);
+  const [supplyQuantity, setSupplyQuantity] = useState(1);
+  const [testQuantity, setTestQuantity] = useState(1);
+
+  const FetchSupplies = async (type) => {
+    if (!serverUrl) return;
+    setLoading(true)
+    try {
+      const response = await secureFetch(`${serverUrl}/supplies/search?` + new URLSearchParams({
+        query: type,
+        page: currentPage,
+        size: 100
+      }).toString(), 
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include',
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error(error);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const setAllTreatments = async () => {
+    const result = await FetchSupplies('treatment:');
+    setTreatments(result);
+  }
+
+  const setAllTests = async () => {
+    const result = await FetchSupplies('test:');
+    setTests(result);
+  }
+
+  const setAllSupplies = async () => {
+    const result = await FetchSupplies('supply:');
+    setSupplies(result);
+  }
+
+  useEffect(() => {
+    setIsLoaded(false);
+    const fetchData = async () => {
+      try {
+        await Promise.all([setAllTreatments(), setAllTests(), setAllSupplies()]);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setIsLoaded(true);
+      }
+    };   
+    fetchData();
+  }, []);
+
+  const OrderBilling = async (type) => {
+    if (!serverUrl) return;
+    const item = type === 'treatment' ? selectedTreatment : type === 'supply' ? selectedSupply : selectedTest;
+    const quantity = type === 'treatment' ? treatmentQuantity : type === 'supply' ? supplyQuantity : testQuantity;
+
+    if (!item || quantity < 1) return;
+    try {
+      setLoading(true);
+      const response = await secureFetch(`${serverUrl}/patient-billing/billing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          admissionID,
+          billingItemDetails: item,
+          billingItemPrice: 1, // to be changed server-side
+          billingItemQty: quantity,
+          billingItemDiscount: 0 // to be changed server-side,
+        }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        alert(`${type.charAt(0).toUpperCase() + type.slice(1)} Order Added`);
+      } else {
+        alert(`Failed to add ${type} order`);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className='qe-modal-overlay'>     
+    { loading ? (
+      <span>Loading...</span>
+      ) : (
+        <div className="qe-modal gap-4 !w-fit !max-w-fit flex flex-col">
+            <h4 className="text-2xl mb-2">Add Orders for Admission No. {admissionID}</h4>
+            {/* Treatment Orders */}
+            <div className="inventory-container gap-4">
+              <h4 className="text-2xl mb-2">Treatment Orders</h4>
+              <div className='flex gap-4'>
+
+                <div className="relative w-full">
+                  <select className="select select-floating max-w-sm" 
+                  onChange={(e) => setSelectedTreatment(e.target.value)}>
+                    <option value=''>Select Treatment</option>
+                    { isLoaded && 
+                      treatments?.content.map((item) => (
+                        <option key={item.id} value={item.id}>{item.supplyName}</option>
+                      ))}
+                  </select>
+                  <span className="select-floating-label">Treatment</span>
+                </div>
+                <div className="form-control">
+                  <input type="number" placeholder="" className="input input-floating peer" defaultValue="1" min="1"
+                  onChange={(e) => setTreatmentQuantity(Number(e.target.value))} />
+                  <label className="input-floating-label">Quantity</label>
+                </div>
+              </div>
+              <button onClick={() => OrderBilling('treatment')} className="btn btn-primary">Order Treatment</button>
+            </div>
+
+            {/* Test Orders */}
+            <div className="inventory-container gap-4">
+              <h4 className="text-2xl mb-2">Test Orders</h4>
+              <div className='flex gap-4'>
+
+                <div className="relative w-full">
+                  <select className="select select-floating max-w-sm" 
+                  onChange={(e) => setSelectedSupply(e.target.value)}>
+                    <option value=''>Select Test</option>
+                    { isLoaded && 
+                      tests?.content?.map((item) => (
+                        <option key={item.id} value={item.id}>{item.supplyName}</option>
+                      ))}
+                  </select>
+                  <span className="select-floating-label">Test</span>
+                </div>
+                <div className="form-control">
+                  <input type="number" placeholder="" className="input input-floating peer" defaultValue="1" min="1"
+                  onChange={(e) => setSupplyQuantity(Number(e.target.value))} />
+                  <label className="input-floating-label">Quantity</label>
+                </div>
+              </div>
+              <button onClick={() => OrderBilling('supply')} className="btn btn-primary">Order Test</button>
+            </div>
+
+
+            {/* Supply Orders */}
+            <div className="inventory-container gap-4">
+              <h4 className="text-2xl mb-2">Supply Orders</h4>
+              <div className='flex gap-4'>
+
+                <div className="relative w-full">
+                  <select className="select select-floating max-w-sm" 
+                  onChange={(e) => setSelectedSupply(e.target.value)}>
+                    <option value=''>Select Supply</option>
+                    { isLoaded && 
+                      supplies?.content?.map((item) => (
+                        <option key={item.id} value={item.id}>{item.supplyName}</option>
+                      ))}
+                  </select>
+                  <span className="select-floating-label">Supply</span>
+                </div>
+                <div className="form-control">
+                  <input type="number" placeholder="" className="input input-floating peer" defaultValue="1" min="1"
+                  onChange={(e) => setSupplyQuantity(Number(e.target.value))} />
+                  <label className="input-floating-label">Quantity</label>
+                </div>
+              </div>
+              <button onClick={() => OrderBilling('supply')} className="btn btn-primary">Order Supply</button>
+            </div>
+
+            <button onClick={closeModal} className="btn btn-secondary">Close</button>
+        </div>
+      )
+    }
+    </div>
+  )
+  
+}
+
+const isPatientOutOfER = (status) => {
+  return status === "paid" || status === "collateralized" || 
+         status === "discharged" || status === "admitted-to-ward" || status?.includes("transferred");
 }
 
 // App Component (Main Entry Point)
@@ -445,6 +656,16 @@ function App() {
   const closeBillingModal = () => {
     setBillingModalVisible(false);
   }
+
+  const[orderModalVisible, setOrderModalVisible] = useState(false);
+  const showOrderModal = (id) => {
+    console.log(id)
+    setAdmissionID(id);
+    setOrderModalVisible(true);
+  }
+  const closeOrderModal = () => {
+    setOrderModalVisible(false);
+  }
   
 
   return (
@@ -463,12 +684,20 @@ function App() {
             itemsPerPage={itemsPerPage}
 
             showBillingModal={showBillingModal}
+            showOrderModal={showOrderModal}
           />
 
           {billingModalVisible &&
             <BillingModal
             admissionID={admissionID}
             closeModal={closeBillingModal}
+            />
+          }
+
+          {orderModalVisible &&
+            <OrderModal
+            admissionID={admissionID}
+            closeModal={closeOrderModal}
             />
           }
         </div>
