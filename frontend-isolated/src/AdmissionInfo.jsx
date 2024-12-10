@@ -413,6 +413,10 @@ function AdmissionInfo({admissionID, closeModal}) {
                                         <label className="input-floating-label">Out of E.R. Since</label>
                                     </div>
                                 </div>
+                                    <div className="form-control w-full">
+                                        <input type="text" defaultValue={admission.patientERCause} className="input input-floating peer" readOnly />
+                                        <label className="input-floating-label">Status</label>
+                                    </div>
                             </div>
                             {/* Patient Info*/}
                             {admission.patientID && 
