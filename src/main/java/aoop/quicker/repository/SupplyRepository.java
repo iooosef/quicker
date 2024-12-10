@@ -11,6 +11,7 @@ import java.util.Optional;
 public interface SupplyRepository extends JpaRepository<Supply, Integer>, JpaSpecificationExecutor<Supply> {
     Page<Supply> findAll(Pageable pageable);
     Optional<Supply> findSupplyBySupplyNameAndSupplyType(String supplyName, String supplyType);
+    Optional<Supply> findSupplyBySupplyName(String supplyName);
     boolean existsBySupplyName(String supplyName);
     boolean existsSupplyBySupplyNameAndSupplyType(String supplyName, String supplyType);
 }

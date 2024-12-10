@@ -161,7 +161,17 @@ public class PatientBillingController {
         }
 
         model.setBillingItemDetails(HMO_DISCOUNT_DETAILS);
-        return ResponseEntity.ok(patientBillingService.savePatientBilling(model));
+        var result = patientBillingService.savePatientBilling(model);
+        if (result != null) {
+            var targetSupply = supplyService.getSupplyByName(model.getBillingItemDetails());
+            boolean isSupplySupplyType = targetSupply.isPresent() && targetSupply.get().getSupplyType().contains("supply:");
+            if (isSupplySupplyType) {
+                Integer newSupplyQty = targetSupply.get().getSupplyQty() - model.getBillingItemQty();
+                targetSupply.get().setSupplyQty(newSupplyQty);
+                supplyService.updateSupply(targetSupply.get().getId(), targetSupply.get());
+            }
+        }
+        return ResponseEntity.ok(result);
     }
 
     @PutMapping(value="/billing/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -187,11 +197,42 @@ public class PatientBillingController {
         if (!errors.isEmpty()) {
             return ResponseEntity.status(400).body(errors);
         }
+
+
+        var originalBilling = patientBillingService.getPatientBillingByAdmissionIDAndDetails(model.getAdmissionID(), model.getBillingItemDetails());
+        var targetSupply = supplyService.getSupplyByName(model.getBillingItemDetails());
+        boolean isSupplySupplyType = targetSupply.isPresent() && targetSupply.get().getSupplyType().contains("supply:");
         if (toBeDeleted) {
             patientBillingService.deletePatientBilling(id);
+            // recover the supply qty if the billing item is a supply
+            if (targetSupply.isPresent() && isSupplySupplyType) {
+                Integer newSupplyQty = targetSupply.get().getSupplyQty() + originalBilling.get().getBillingItemQty();
+                targetSupply.get().setSupplyQty(newSupplyQty);
+                supplyService.updateSupply(targetSupply.get().getId(), targetSupply.get());
+            }
             return ResponseEntity.ok("Deleted " + model.getBillingItemDetails() + " billing item.");
         }
-        return ResponseEntity.ok(patientBillingService.updatePatientBilling(id, model));
+
+        var result = patientBillingService.updatePatientBilling(id, model);
+        if (result != null) {
+            // if a Supply billing's qty is change, update the recovered or used amount of the supply
+            boolean isBillingQtyChanged = originalBilling.isPresent() && originalBilling.get().getBillingItemQty() != model.getBillingItemQty();
+            boolean isBillingQtyBigger = originalBilling.isPresent() && originalBilling.get().getBillingItemQty() < model.getBillingItemQty();
+            Integer originalSupplyQty = targetSupply.get().getSupplyQty();
+            if (isBillingQtyChanged && targetSupply.isPresent() && isSupplySupplyType && isBillingQtyBigger) {
+                // if the billing qty is increased, deduct the used qty from the supply
+                Integer newSupplyQty = originalSupplyQty - (model.getBillingItemQty() - originalBilling.get().getBillingItemQty());
+                targetSupply.get().setSupplyQty(newSupplyQty);
+                supplyService.updateSupply(targetSupply.get().getId(), targetSupply.get());
+            } else if (isBillingQtyChanged && targetSupply.isPresent() && isSupplySupplyType && !isBillingQtyBigger) {
+                // if the billing qty is decreased, add the recovered qty to the supply
+                Integer newSupplyQty = originalSupplyQty + (originalBilling.get().getBillingItemQty() - model.getBillingItemQty());
+                targetSupply.get().setSupplyQty(newSupplyQty);
+                supplyService.updateSupply(targetSupply.get().getId(), targetSupply.get());
+            }
+        }
+
+        return ResponseEntity.ok(result);
     }
 
     private void addSeniorOrPWDDiscount(int admissionID) {

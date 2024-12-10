@@ -38,6 +38,10 @@ public class SupplyService {
         return supplyRepository.findSupplyBySupplyNameAndSupplyType(name, type);
     }
 
+    public Optional<Supply> getSupplyByName(String name) {
+        return supplyRepository.findSupplyBySupplyName(name);
+    }
+
     // For adding a new supply
     public Supply addSupply(Supply supply) {
         return supplyRepository.save(supply); // Save supply to the database
@@ -79,6 +83,7 @@ public class SupplyService {
                         * \d+ - one or more digits
                         * */
                         predicate = criteriaBuilder.lessThanOrEqualTo(root.get("supplyQty"), Integer.parseInt(term));
+
                     } else if (term.matches("(?i)^(\\$|PHP)\\s?\\d+(\\.\\d+)?$")) {
                         /*
                         * Regex for currency: If currency, filter by price
