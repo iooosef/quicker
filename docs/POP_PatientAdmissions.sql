@@ -22,10 +22,10 @@ VALUES
     (2, N'Bandages', 1.5000, 3, 0.0000),
 
     -- Lucky Chan
-    (4, N'Emergency Room Fee', 2500.0000, 1, 0.0000),
-    (4, N'Complete Blood Count (CBC)', 30.0000, 1, 0.0000),
-    (4, N'Emergency Intubation', 1000.0000, 1, 0.0000),
-    (4, N'Oxygen Mask', 5.0000, 1, 0.0000),
+    (3, N'Emergency Room Fee', 2500.0000, 1, 0.0000),
+    (3, N'Complete Blood Count (CBC)', 30.0000, 1, 0.0000),
+    (3, N'Emergency Intubation', 1000.0000, 1, 0.0000),
+    (3, N'Oxygen Mask', 5.0000, 1, 0.0000),
 
     -- Papi Bin Laden
     (6, N'Emergency Room Fee', 2500.0000, 1, 0.0000),
