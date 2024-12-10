@@ -178,6 +178,9 @@ public class PatientBillingController {
     public ResponseEntity<?> addPatientBilling(@RequestBody PatientBilling model) {
         List errors = new ArrayList();
         errors.addAll(validate(model.getAdmissionID(), model));
+        if (!errors.isEmpty()) {
+            return ResponseEntity.status(400).body(errors);
+        }
         var targetSupply = supplyService.getSupplyById(Integer.parseInt(model.getBillingItemDetails())); // details from client are supply id
         boolean isSupplySupplyType = targetSupply.isPresent() && targetSupply.get().getSupplyType().contains("supply:");
         if (isSupplySupplyType) {
@@ -191,9 +194,6 @@ public class PatientBillingController {
             }
             targetSupply.get().setSupplyQty(newSupplyQty);
             supplyService.updateSupply(targetSupply.get().getId(), targetSupply.get());
-        }
-        if (!errors.isEmpty()) {
-            return ResponseEntity.status(400).body(errors);
         }
         model.setBillingItemDetails(targetSupply.get().getSupplyName());
         model.setBillingItemPrice(targetSupply.get().getSupplyPrice());
@@ -221,6 +221,9 @@ public class PatientBillingController {
             error.put("message", "Quantity must be greater than zero");
             error.put("target", "billingItemQty");
             errors.add(error);
+        }
+        if (!errors.isEmpty()) {
+            return ResponseEntity.status(400).body(errors);
         }
 
         if (toBeDeleted) {
@@ -253,11 +256,9 @@ public class PatientBillingController {
                 error.put("message", "Insufficient supply quantity.");
                 error.put("target", "model");
                 errors.add(error);
+                return ResponseEntity.status(400).body(errors);
             }
             targetSupply.get().setSupplyQty(newSupplyQty);
-        }
-        if (!errors.isEmpty()) {
-            return ResponseEntity.status(400).body(errors);
         }
 
         var result = patientBillingService.updatePatientBilling(id, model);
