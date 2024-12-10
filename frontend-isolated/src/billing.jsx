@@ -8,6 +8,7 @@ import secureFetch from './auth/SecureFetch';
 import Signature from '@lemonadejs/signature/dist/react';
 import CheckboxGroup from './util/CheckBoxGroup';
 import AdmissionInfo from './AdmissionInfo';
+import { use } from 'react';
 
 function Sidebar() {
   const navigate = useNavigate();
@@ -77,7 +78,8 @@ function AdmissionsBilling ({ patientAdmissionsData,
                               itemsPerPage,
                               // modal visibility methods
                               showBillingModal,
-                              showOrderModal
+                              showOrderModal,
+                              showDiscountModal
                             }) {  
 
   const refreshAdmissions = () => {
@@ -165,17 +167,17 @@ function AdmissionsBilling ({ patientAdmissionsData,
                   }>{item.patientBillingStatus}</span>
                 </td>
                 <td className='text-black flex gap-2'>
-                  <button type="button" onClick={() => showBillingModal(item.id)} className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit flex-1'>
+                  <button type="button" onClick={() => showBillingModal(item.id, item.patientStatus)} className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit flex-1'>
                     <span className="">Bill</span>
                   </button>
-                  {isPatientOutOfER(item.patientStatus) && (
+                  {!isPatientOutOfER(item.patientStatus) && (
                       <button type="button" onClick={() => showOrderModal(item.id)} className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit'>
                         <span className="">Order</span>
                       </button>
                     )
                   }
-                  {isPatientOutOfER(item.patientStatus) && (
-                      <button type="button" className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit'>
+                  {!isPatientOutOfER(item.patientStatus) && (
+                      <button type="button" onClick={() => showDiscountModal(item.id, item.patientStatus)} className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit'>
                         <span className="">Discounts</span>
                       </button>
                     )
@@ -213,7 +215,7 @@ function AdmissionsBilling ({ patientAdmissionsData,
   );
 };
 
-function BillingModal({ admissionID, closeModal }) {
+function BillingModal({ admissionID, closeModal, editable }) {
   const { serverUrl } = useConfig();
   const [loading, setLoading] = useState(false);
   const [billingData, setBillingData] = useState({});
@@ -312,7 +314,7 @@ function BillingModal({ admissionID, closeModal }) {
         <div className="qe-modal gap-4 !w-fit !max-w-fit flex">
 
             <div className="inventory-container">
-              <h4 className="text-2xl mb-2">Inventory</h4>
+            <h4 className="text-2xl mb-2">Billing for Admission No. {admissionID}</h4>
               <table>
                 <thead>
                   <tr>
@@ -322,7 +324,7 @@ function BillingModal({ admissionID, closeModal }) {
                     <th>Unit Price</th>
                     <th>Discount</th>
                     <th>Total</th>
-                    <th className='!text-center'>Actions</th>
+                    {editable && (<th>Actions</th>)}
                   </tr>
                 </thead>
                 <tbody>
@@ -366,11 +368,15 @@ function BillingModal({ admissionID, closeModal }) {
                           new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PHP' })
                           .format(((item.billingItemQty ?? 0) * (item.billingItemPrice ?? 0)) - (item.billingItemDiscount ?? 0))                        
                         }</td>
-                        <td className='text-black flex justify-center'>
-                          <button type="button" onClick={() => handleEditQty(item.id, item.billingItemQty, item.billingItemDetails)} className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit'>
-                            <span className="icon-[tabler--pencil] text-neutral-500"></span>
-                          </button>
-                        </td>
+                        {
+                          !editable && (
+                            <td className='text-black flex justify-center'>
+                              <button type="button" onClick={() => handleEditQty(item.id, item.billingItemQty, item.billingItemDetails)} className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit'>
+                                <span className="icon-[tabler--pencil] text-neutral-500"></span>
+                              </button>
+                            </td>
+                          )
+                        }
                       </tr>
                     ))
                   )}
@@ -603,6 +609,448 @@ function OrderModal({ admissionID, closeModal }) {
   
 }
 
+function DiscountModal ({admissionID, closeModal, status}) {
+  const { serverUrl } = useConfig();
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [pHealth, setPHealth] = useState({
+    philHealthIDNum: '',
+    philHealthEmployer: '',
+  });
+  const [pHealthFound, setPHealthFound] = useState(false);
+  const [hmo, setHMO] = useState({
+    HMOIDNum: '',
+    HMOEmployer: '',
+  });
+  const [hmoFound, setHMOFound] = useState(false);
+  
+  const FetchPHealth = () => {
+    if (!serverUrl) return;
+    setLoading(true)
+    setPHealthFound(false);
+    secureFetch(`${serverUrl}/patients-philhealth/${admissionID}`, 
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+    })
+    .then(response => {
+      if (response.status == 404) {
+        setPHealthFound(false);
+      }
+      if (response.ok) {
+        setPHealthFound(true);
+        return response.json();
+      }
+    })
+    .then(data => {
+      if(!data) return;
+      setPHealth(data)
+    })
+    .catch(error => {
+      console.error(error);
+      setPHealthFound(false);
+    }).
+    finally(() => {
+      setLoading(false)
+    })
+  }
+  
+  const FetchHMO = () => {
+    if (!serverUrl) return;
+    setLoading(true)
+    setPHealthFound(false);
+    secureFetch(`${serverUrl}/patients-hmo/${admissionID}`, 
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+    })
+    .then(response => {
+      if (response.status == 404) {
+        setHMOFound(false);
+      }
+      if (response.ok) {
+        setHMOFound(true);
+        return response.json();
+      }
+    })
+    .then(data => {
+      console.log(data)
+      if(!data) return;
+      setHMO(data)
+    })
+    .catch(error => {
+      console.error(error);
+      setHMOFound(false);
+    }).
+    finally(() => {
+      setLoading(false)
+    })
+  }
+  
+  const signatureRefA = useRef(null);
+  const resetA = function () {
+    signatureRefA.current.value = [];
+  };
+  
+  const signatureRefB = useRef(null);
+  const resetB = function () {
+    signatureRefB.current.value = [];
+  };
+
+  useEffect(() => {
+    FetchPHealth();
+    FetchHMO();
+  }
+  , [])
+
+  
+
+  const validateModel = (type, model) => {
+    const foundErrors = type == 'pHealth' ? validatePHealth(model) : validateHMO(model);
+    setErrors(foundErrors);
+    return Object.keys(foundErrors).length === 0;
+  };
+
+  const AddPhilHealth = (e) => {
+    e.preventDefault();
+    if (!serverUrl) return;
+    if (!validateModel('pHealth', pHealth)) return;
+    setLoading(true);
+    
+    const now = new Date().toISOString();
+
+    const payload = {
+      admissionID: admissionID,
+      philHealthIDNum: pHealth.philHealthIDNum,
+      philHealthEmployer: pHealth.philHealthEmployer,
+      philHealthSignature: signatureRefA.current.getImage().replace("data:image/png;base64,", ""),
+      philHealthRequestOn: now,
+      philHealthStatus: 'pending'
+    }
+
+    secureFetch(`${serverUrl}/patients-philhealth/patient`, 
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      })
+      .then(async (response) => {
+        const responseBody = await response.json()
+        if(response.status !== 200) {
+          console.log(responseBody);
+          const errorString = responseBody.map((error) => error.message).join('\n');
+          alert(errorString);
+        } else {
+          alert(`Successfully added a request for PhilHealth Discount for Admission No. ${admissionID}`);
+          closeModal();
+        }
+      })
+      .catch(error => console.error(error)).
+      finally(() => {
+        setLoading(false)
+      });
+  }
+
+  const AddHMO = (e) => {
+    e.preventDefault();
+    if (!serverUrl) return;
+    if (!validateModel(' notpHealth', hmo)) return;
+    setLoading(true);
+    
+    const now = new Date().toISOString();
+
+    console.log(hmo)
+    const payloadH = {
+      admissionID: admissionID,
+      hMOIDNum: hmo.HMOIDNum,
+      hMOEmployer: hmo.HMOEmployer,
+      hMOSignature: signatureRefB.current.getImage().replace("data:image/png;base64,", ""),
+      hMORequestOn: now,
+      hMOStatus: 'pending'
+    }
+    console.log(payloadH)
+
+    secureFetch(`${serverUrl}/patients-hmo/patient`, 
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include',
+        body: JSON.stringify(payloadH)
+      })
+      .then(async (response) => {
+        const responseBody = await response.json()
+        if(response.status !== 200) {
+          console.log(responseBody);
+          const errorString = responseBody.map((error) => error.message).join('\n');
+          alert(errorString);
+        } else {
+          alert(`Successfully added a request for HMO Discount for Admission No. ${admissionID}`);
+          closeModal();
+        }
+      })
+      .catch(error => console.error(error)).
+      finally(() => {
+        setLoading(false)
+      });
+  }
+  
+
+  return (
+    <>           
+      <div className='qe-modal-overlay'>     
+          { loading ? (
+          <span>Loading...</span>
+          ) : (
+              <div className="qe-modal gap-4 !w-full !max-w-full flex">
+                  <h4 className="text-2xl mb-2">Discount Info for No. {admissionID}</h4>
+                  <div className='flex gap-4'>
+                    
+                    {/* PhilHealth SECTION */}
+                    <div className='flex-1 flex flex-col gap-4'>
+                      <div className="inventory-container gap-4">
+                        { pHealthFound ? (
+                            <>
+                            <h4 className="text-2xl mb-2">PhilHealth Details</h4>
+                              <div className='flex gap-4'>
+                                <div className="form-control w-1/2">
+                                    <input type="text" defaultValue={pHealth.id} className="input input-floating peer" readOnly />
+                                    <label className="input-floating-label">ID</label>
+                                </div>
+                              </div>
+                                <div className="form-control w-full">
+                                    <input type="text" defaultValue={pHealth.philHealthIDNum} className="input input-floating peer" readOnly />
+                                    <label className="input-floating-label">ID Number</label>
+                                </div>
+                                <div className="form-control w-full">
+                                    <input type="text" defaultValue={pHealth.philHealthEmployer} className="input input-floating peer" readOnly />
+                                    <label className="input-floating-label">Employer</label>
+                                </div>
+                              <div className='flex gap-4'>
+                                <div className="form-control w-1/2">
+                                    <input type="text" defaultValue={formatDTStr(pHealth.philHealthRequestOn)} className="input input-floating peer" readOnly />
+                                    <label className="input-floating-label">Requested On</label>
+                                </div>
+                                <div className="form-control w-1/2">
+                                    <input type="text" defaultValue={pHealth.philHealthStatus} className="input input-floating peer" readOnly />
+                                    <label className="input-floating-label">Status</label>
+                                </div>
+                              </div>
+                            </>
+                        ) : (
+                          <form onSubmit={AddPhilHealth}>
+                            <div className='flex flex-col gap-4'>
+                              <h4 className="text-2xl mb-2 text-nowrap">Philhealth Request Form</h4>
+                              <div>
+                                <h5 className="text-base-content/90 text-lg font-semibold">Philhealth Legalese Placeholder Here</h5>
+                                <p className="text-base-content/80 text-base">
+                                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras congue nunc a dui porttitor, at dapibus lorem gravida. Aenean vestibulum nulla et nisl semper, sed ultricies ligula volutpat. Donec non dolor vel magna blandit tincidunt eget luctus quam. Duis ut placerat lorem. Praesent sagittis ipsum arcu, sed varius turpis tempor in. Mauris tellus arcu, egestas ut volutpat sit amet, mollis porttitor nibh. Pellentesque nec mauris dolor. Integer et placerat mi. Etiam tempus, enim in dapibus pellentesque, lectus tellus aliquam lacus, ut maximus felis ipsum vel eros. Nulla posuere imperdiet odio, nec fringilla magna. Sed rutrum, mi nec mollis ullamcorper, lorem tellus ultrices quam, sed dictum dui est vel dolor.
+                                </p>
+                              </div>
+
+                                <label>                                  
+                                  <div className="form-control input-group w-full max-w-full">
+                                    <span className="input-group-text font-bold uppercase text-nowrap">ID Number</span>
+                                    <input type="text" className={"input grow !text-black " +
+                                      (errors.philHealthIDNum && 'is-invalid')
+                                    }
+                                    onChange={(e) => setPHealth((prev) => ({
+                                      ...prev,
+                                      philHealthIDNum: e.target.value
+                                    }))} />
+                                  </div>
+                                  <div className="label">
+                                    {errors.philHealthIDNum && (
+                                      <span className="label-text-alt text-error">{errors.philHealthIDNum}</span>
+                                    )}
+                                  </div>
+                                </label>
+                              
+                                <label>                                  
+                                  <div className="form-control input-group w-full max-w-full">
+                                    <span className="input-group-text font-bold uppercase text-nowrap">Employer</span>
+                                    <input type="text" className={"input grow !text-black " +
+                                      (errors.philHealthEmployer && 'is-invalid')
+                                    }
+                                    onChange={(e) => setPHealth((prev) => ({
+                                      ...prev,
+                                      philHealthEmployer: e.target.value
+                                    }))} />
+                                  </div>
+                                  <div className="label">
+                                    {errors.philHealthEmployer && (
+                                      <span className="label-text-alt text-error">{errors.philHealthEmployer}</span>
+                                    )}
+                                  </div>
+                                </label>
+                                
+                                <div className='signature-area p-4 flex flex-col gap-4 justify-center bg-gray-300 rounded-lg'>
+                    
+                                  <h4 className='text-xl font-bold'>Signature Pad</h4>
+                                  <Signature
+                                      ref={signatureRefA}
+                                      value={[]}
+                                      width={420}
+                                      height={120}
+                                      instructions={"Please sign in the box above"}
+                                  />
+                                  <div className='flex gap-4'>
+                                    <button type="button" onClick={resetA} className="btn btn-secondary">Clear Signature Pad</button>
+                                  </div>
+                                </div>
+                              <button type='submit' className="btn btn-primary">Request PhilHealth Discount</button>
+                            </div>
+                          </form>
+                        )}
+                      </div>
+                    </div>
+                    {/* HMO SECTION */}
+                    <div className='flex-1 flex flex-col gap-4'>
+                      <div className="inventory-container gap-4">
+                        { hmoFound ? (
+                            <>
+                            <h4 className="text-2xl mb-2">HMO Details</h4>
+                              <div className='flex gap-4'>
+                                <div className="form-control w-1/2">
+                                    <input type="text" defaultValue={hmo.id} className="input input-floating peer" readOnly />
+                                    <label className="input-floating-label">ID</label>
+                                </div>
+                              </div>
+                                <div className="form-control w-full">
+                                    <input type="text" defaultValue={hmo.hMOIDNum} className="input input-floating peer" readOnly />
+                                    <label className="input-floating-label">ID Number</label>
+                                </div>
+                                <div className="form-control w-full">
+                                    <input type="text" defaultValue={hmo.hMOEmployer} className="input input-floating peer" readOnly />
+                                    <label className="input-floating-label">Employer</label>
+                                </div>
+                              <div className='flex gap-4'>
+                                <div className="form-control w-1/2">
+                                    <input type="text" defaultValue={formatDTStr(hmo.hMORequestOn)} className="input input-floating peer" readOnly />
+                                    <label className="input-floating-label">Requested On</label>
+                                </div>
+                                <div className="form-control w-1/2">
+                                    <input type="text" defaultValue={hmo.hMOStatus} className="input input-floating peer" readOnly />
+                                    <label className="input-floating-label">Status</label>
+                                </div>
+                              </div>
+                            </>
+                        ) : (
+                          <form onSubmit={AddHMO}>
+                            <div className='flex flex-col gap-4'>
+                              <h4 className="text-2xl mb-2 text-nowrap">HMO Request Form</h4>
+                              <div>
+                                <h5 className="text-base-content/90 text-lg font-semibold">HMO Legalese Placeholder Here</h5>
+                                <p className="text-base-content/80 text-base">
+                                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras congue nunc a dui porttitor, at dapibus lorem gravida. Aenean vestibulum nulla et nisl semper, sed ultricies ligula volutpat. Donec non dolor vel magna blandit tincidunt eget luctus quam. Duis ut placerat lorem. Praesent sagittis ipsum arcu, sed varius turpis tempor in. Mauris tellus arcu, egestas ut volutpat sit amet, mollis porttitor nibh. Pellentesque nec mauris dolor. Integer et placerat mi. Etiam tempus, enim in dapibus pellentesque, lectus tellus aliquam lacus, ut maximus felis ipsum vel eros. Nulla posuere imperdiet odio, nec fringilla magna. Sed rutrum, mi nec mollis ullamcorper, lorem tellus ultrices quam, sed dictum dui est vel dolor.
+                                </p>
+                              </div>
+
+                                <label>                                  
+                                  <div className="form-control input-group w-full max-w-full">
+                                    <span className="input-group-text font-bold uppercase text-nowrap">ID Number</span>
+                                    <input type="text" className={"input grow !text-black " +
+                                      (errors.HMOIDNum && 'is-invalid')
+                                    }
+                                    onChange={(e) => setHMO((prev) => ({
+                                      ...prev,
+                                      HMOIDNum: e.target.value
+                                    }))} />
+                                  </div>
+                                  <div className="label">
+                                    {errors.HMOIDNum && (
+                                      <span className="label-text-alt text-error">{errors.HMOIDNum}</span>
+                                    )}
+                                  </div>
+                                </label>
+                              
+                                <label>                                  
+                                  <div className="form-control input-group w-full max-w-full">
+                                    <span className="input-group-text font-bold uppercase text-nowrap">Employer</span>
+                                    <input type="text" className={"input grow !text-black " +
+                                      (errors.HMOEmployer && 'is-invalid')
+                                    }
+                                    onChange={(e) => setHMO((prev) => ({
+                                      ...prev,
+                                      HMOEmployer: e.target.value
+                                    }))} />
+                                  </div>
+                                  <div className="label">
+                                    {errors.HMOEmployer && (
+                                      <span className="label-text-alt text-error">{errors.HMOEmployer}</span>
+                                    )}
+                                  </div>
+                                </label>
+                                
+                                <div className='signature-area p-4 flex flex-col gap-4 justify-center bg-gray-300 rounded-lg'>
+                    
+                                  <h4 className='text-xl font-bold'>Signature Pad</h4>
+                                  <Signature
+                                      ref={signatureRefB}
+                                      value={[]}
+                                      width={420}
+                                      height={120}
+                                      instructions={"Please sign in the box above"}
+                                  />
+                                  <div className='flex gap-4'>
+                                    <button type="button"  onClick={resetB} className="btn btn-secondary">Clear Signature Pad</button>
+                                  </div>
+                                </div>
+                              <button type='submit' className="btn btn-primary">Request HMO Discount</button>
+                            </div>
+                          </form>
+                        )}
+                      </div>
+                    </div>
+                    
+                  </div>
+                  <button onClick={closeModal} className="btn btn-secondary">Close</button>
+              </div>
+          )}
+      </div>
+    </>
+  )
+}
+
+const validatePHealth = (pHealth) => {
+  const foundErrors = {};
+  if (!pHealth.philHealthIDNum) {
+    foundErrors.philHealthIDNum = 'Please enter a valid PhilHealth ID Number';
+  }
+  if (!pHealth.philHealthEmployer) {
+    foundErrors.philHealthEmployer = 'Please enter a valid Employer';
+  }
+  return foundErrors;
+}
+
+const validateHMO = (hmo) => {
+  const foundErrors = {};
+  if (!hmo.HMOIDNum) {
+    foundErrors.HMOIDNum = 'Please enter a valid HMO ID Number';
+  }
+  if (!hmo.HMOEmployer) {
+    foundErrors.HMOEmployer = 'Please enter a valid Employer';
+  }
+  return foundErrors;
+}
+
+const formatDTStr = (dateStr) => {
+    if (dateStr === null || isNaN(new Date(dateStr).getTime())) return '';
+    const date = new Date(dateStr);
+    const formattedDate = new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short', // Shortened version of the month (e.g., "Dec")
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: true, // 12-hour format; set to false for 24-hour format
+    }).format(date);
+    return formattedDate;
+};
+
+
 const isPatientOutOfER = (status) => {
   return status === "paid" || status === "collateralized" || 
          status === "discharged" || status === "admitted-to-ward" || status?.includes("transferred");
@@ -646,11 +1094,14 @@ function App() {
   
   // SHOW/HIDE MODAL METHODS
   const [admissionID, setAdmissionID] = useState(null);
+  const [editable, setEditable] = useState(false);
+  const [status, setStatus] = useState(null);
 
   const [billingModalVisible, setBillingModalVisible] = useState(false);
-  const showBillingModal = (id) => {
+  const showBillingModal = (id, status) => {
     console.log(id)
     setAdmissionID(id);
+    setEditable(isPatientOutOfER(status));
     setBillingModalVisible(true);
   }
   const closeBillingModal = () => {
@@ -667,6 +1118,17 @@ function App() {
     setOrderModalVisible(false);
   }
   
+  const[discountModalVisible, setDiscountModalVisible] = useState(false);
+  const showDiscountModal = (id, status) => {
+    console.log(id)
+    setAdmissionID(id);
+    setStatus(status);
+    setDiscountModalVisible(true);
+  }
+  const closeDiscountModal = () => {
+    setDiscountModalVisible(false);
+  }
+
 
   return (
     <div style={{ display: 'flex', flexDirection: 'row', height: '100vh', position: 'relative' }}>
@@ -685,12 +1147,14 @@ function App() {
 
             showBillingModal={showBillingModal}
             showOrderModal={showOrderModal}
+            showDiscountModal={showDiscountModal}
           />
 
           {billingModalVisible &&
             <BillingModal
             admissionID={admissionID}
             closeModal={closeBillingModal}
+            editable={editable}
             />
           }
 
@@ -698,6 +1162,14 @@ function App() {
             <OrderModal
             admissionID={admissionID}
             closeModal={closeOrderModal}
+            />
+          }
+
+          {discountModalVisible &&
+            <DiscountModal
+            admissionID={admissionID}
+            closeModal={closeDiscountModal}
+            status={status}
             />
           }
         </div>
