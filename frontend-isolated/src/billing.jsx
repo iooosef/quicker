@@ -1,434 +1,380 @@
-import React, { useState } from "react";
+import React, { useEffect, useState, useRef } from 'react';
+import './inventory.css'; 
+import quicker from "./assets/quicker.png";
 import { useNavigate } from 'react-router-dom';
-import "./billing.css"; 
-import quicker from "./assets/quicker.png"; 
+import { useConfig } from './util/ConfigContext';
+import { useUser } from './auth/UserContext';
+import secureFetch from './auth/SecureFetch';
+import Signature from '@lemonadejs/signature/dist/react';
+import CheckboxGroup from './util/CheckBoxGroup';
+import AdmissionInfo from './AdmissionInfo';
 
-const BillingPage = () => {
-    const [patients, setPatients] = useState([
-        ]);
-    const navigate = useNavigate();
-    const [showModal, setShowModal] = useState(false);
+function Sidebar() {
+  const navigate = useNavigate();
+  const [showModal, setShowModal] = useState(false); // State for modal visibility
+  const { user, loading  } = useUser();
+  const [isUserLoaded, setIsUserLoaded] = useState(false);
 
-    const [newPatient, setNewPatient] = useState({
-        name: "",
-        status: "",
-        bed: "",
-        triage: "",
-        admissionDate: "",
-        receipt: [],
-        hmoDiscount: false, // Track HMO Discount
-        philHealthDiscount: false, // Track PhilHealth Discount
-    });
+  useEffect(() => {
+    if (user || loading === false) {
+      setIsUserLoaded(true);
+    }
+  }, [user, loading]);
 
-    const [selectedPatient, setSelectedPatient] = useState(null);
+  if (loading || !isUserLoaded) {
+    return <div>Loading...</div>; 
+  }
 
-    const [searchQuery, setSearchQuery] = useState("");
-    const [currentPage, setCurrentPage] = useState(1);
-    const patientsPerPage = 5;
-
-    const calculateDaysStayed = (admissionDate) => {
-        const currentDate = new Date();
-        const admissionDateObj = new Date(admissionDate);
-        const timeDifference = currentDate - admissionDateObj;
-        const daysStayed = Math.floor(timeDifference / (1000 * 3600 * 24));
-        return daysStayed;
-    };
-
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setNewPatient((prev) => ({
-            ...prev,
-            [name]: value
-        }));
-    };
-
-    const handleReceiptChange = (e, itemIndex) => {
-        const { name, value } = e.target;
-        setNewPatient((prev) => {
-            const updatedReceipt = [...prev.receipt];
-            updatedReceipt[itemIndex][name] = value;
-            return { ...prev, receipt: updatedReceipt };
-        });
-    };
-
-    const addReceiptItem = () => {
-        setNewPatient((prev) => ({
-            ...prev,
-            receipt: [...prev.receipt, { service: "", quantity: "", unitCost: "", totalCost: "" }]
-        }));
-    };
-
-    const removeReceiptItem = (index) => {
-        setNewPatient((prev) => ({
-            ...prev,
-            receipt: prev.receipt.filter((_, i) => i !== index)
-        }));
-    };
-
-    const handleAddPatient = () => {
-        setPatients((prev) => [...prev, { ...newPatient, id: Date.now() }]);
-        setShowModal(false);
-        setNewPatient({ name: "", status: "", bed: "", triage: "", admissionDate: "", receipt: [], hmoDiscount: false, philHealthDiscount: false });
-    };
-
-    const viewReceipt = (patient) => {
-        const daysStayed = calculateDaysStayed(patient.admissionDate);
-        setSelectedPatient({ ...patient, daysStayed });
-    };
-
-    const calculateTotalWithDiscount = (receipt, hmoDiscount, philHealthDiscount) => {
-        const subtotal = receipt.reduce((total, item) => total + parseFloat(item.totalCost || 0), 0);
-        let discount = 0;
-
-        if (hmoDiscount) {
-            discount += 0.1 * subtotal; // HMO 10% discount
+  const handleLogout = () => {
+    setShowModal(false); // Close modal
+    window.location.href = '/logout'; // Navigate to the login page
+  };
+// Sidebar Component
+return (
+  <div className="emergency-room-container">
+    <aside className="sidebar">
+    <img src={quicker} onClick={() => navigate('/menu')} alt="Quicker Logo" className="logo cursor-pointer" />
+      <ul className="nav-menu">
+        {(user.role == "ADMIN" || user.role == "STAFF") &&
+          <li className="nav-menu-item" onClick={() => navigate('/emergency')}>Emergency Room</li>
         }
-
-        if (philHealthDiscount) {
-            discount += 0.05 * subtotal;
+        {(user.role == "ADMIN" || user.role == "INVENTORYSTAFF") &&
+          <li className="nav-menu-item" onClick={() => navigate('/inventory')}>Inventory</li>
         }
-
-        return subtotal - discount;
-    };
-
-    const filteredPatients = patients.filter((patient) => {
-        return patient.name.toLowerCase().includes(searchQuery.toLowerCase());
-    });
-
-    const indexOfLastPatient = currentPage * patientsPerPage;
-    const indexOfFirstPatient = indexOfLastPatient - patientsPerPage;
-    const currentPatients = filteredPatients.slice(indexOfFirstPatient, indexOfLastPatient);
-
-    const paginate = (pageNumber) => setCurrentPage(pageNumber);
-
-    const nextPage = () => {
-        if (currentPage < Math.ceil(filteredPatients.length / patientsPerPage)) {
-            setCurrentPage(currentPage + 1);
+        {(user.role == "ADMIN" || user.role == "INVENTORYSTAFF") &&
+          <li className="nav-menu-item" onClick={() => navigate('/beds')}>Bed Management</li>
+        }        
+        {(user.role == "ADMIN" || user.role == "STAFF") &&
+          <li className="nav-menu-item active" onClick={() => navigate('/billing')}>Billing</li>
         }
-    };
+        <li className="nav-menu-item" onClick={() => setShowModal(true)}>Log-out</li>
+      </ul>
 
-    const prevPage = () => {
-        if (currentPage > 1) {
-            setCurrentPage(currentPage - 1);
-        }
-    };
- 
-    const Sidebar = () => {
-        const navigate = useNavigate();
-        const [showModal, setShowModal] = useState(false); // State for modal visibility
-      
-        const handleLogout = () => {
-          setShowModal(false); // Close modal
-          navigate('/LoginForm'); // Navigate to the login page
-        };
-      // Sidebar Component
-      return (
-        <div className="emergency-room-container">
-          <aside className="sidebar">
-          <img src={quicker} alt="Quicker Logo" className="logo" />
-            <ul className="menu">
-              <li className="menu-item" onClick={() => navigate('/emergency')}>Emergency Room</li>
-              <li className="menu-item" onClick={() => navigate('/inventory')}>Inventory</li>
-              <li className="menu-item" onClick={() => navigate('/bedmanagement')}>Bed Management</li>
-              <li className="menu-item active" onClick={() => navigate('/billing')}>Billing</li>
-              <li className="menu-item" onClick={() => setShowModal(true)}>Log-out</li>
-            </ul>
-      
-            {/* Log-out Confirmation Modal */}
-            {showModal && (
-              <div className="modal-overlay">
-                <div className="modal">
-                  <h2>Confirm Log-out</h2>
-                  <p>Are you sure you want to log out?</p>
-                  <div className="modal-actions">
-                    
-                    <button onClick={() => setShowModal(false)} className="btn-cancel">Cancel</button>
-                    <button onClick={handleLogout} className="btn-confirm">Yes</button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </aside>
-        </div>
-      );
-      }
-    return (
-
-        <div  style={{ display: 'flex', flexDirection: 'row', height: '100vh', position: 'relative' }}>
-<Sidebar />
-
-
-            <div className="content">
-                <div className="patient-list-container">
-                    <h2>Patient List</h2>
-                    <button className="update-button" onClick={() => setShowModal(true)}>
-                        + Add Patient
-                    </button>
-
-                    {/* Search Bar */}
-                    
-                        <input
-                            type="text"
-                            placeholder="Search by name"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="search-bar"
-                        
-                        />
-                   
-
-                    <div className="table-container">
-                        <table className="patient-table">
-                            <thead>
-                                <tr>
-                                    <th>Patient ID</th>
-                                    <th>Triage</th>
-                                    <th>Patient</th>
-                                    <th>Bed</th>
-                                    <th>Status</th>
-                                   
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {currentPatients.map((patient, index) => (
-                                    <tr key={index}>
-                                        <td>{patient.triage}</td>
-                                        <td>{patient.name}</td>
-                                        <td>{patient.bed}</td>
-                                        <td>{patient.status}</td>
-                                        <td className="actions">
-                                            <button onClick={() => viewReceipt(patient)}>Details</button>
-                                            <button className="print">Print</button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* Pagination Controls */}
-                    <div className="pagination">
-                        <button onClick={prevPage} disabled={currentPage === 1}>
-                            Previous
-                        </button>
-                        <span>
-                            Page {currentPage} of {Math.ceil(filteredPatients.length / patientsPerPage)}
-                        </span>
-                        <button onClick={nextPage} disabled={currentPage === Math.ceil(filteredPatients.length / patientsPerPage)}>
-                            Next
-                        </button>
-                    </div>
-                </div>
+      {/* Log-out Confirmation Modal */}
+      {showModal && (
+        <div className="qe-modal-overlay">
+          <div className="qe-modal !w-auto flex flex-col gap-4">
+            <h4 className="text-2xl">Confirm Log-out</h4>
+            <p>Are you sure you want to log out?</p>
+            <div className="flex gap-4 justify-end">              
+              <button onClick={() => setShowModal(false)} className="btn">Cancel</button>
+              <button onClick={handleLogout} className="btn">Yes</button>
             </div>
+          </div>
+        </div>
+      )}
+    </aside>
+  </div>
+);
+}
 
-            {
-                showModal && (
-                    <div className="modal">
-                        <div className="modal-content">
-                            <span className="close" onClick={() => setShowModal(false)}>&times;</span>
-                            <h2>Add New Patient</h2>
-                            <form>
-                                <label>Name:</label>
-                                <input
-                                    type="text"
-                                    name="name"
-                                    value={newPatient.name}
-                                    onChange={handleInputChange}
-                                    placeholder="Enter patient's name"
-                                    required
-                                />
-                                <label>Status:</label>
-                                <select
-                                    name="status"
-                                    value={newPatient.status}
-                                    onChange={handleInputChange}
-                                    required
-                                >
-                                    <option value="">Select Status</option>
-                                    <option value="Deceased">Deceased</option>
-                                    <option value="Ready for Discharge">Ready for Discharge</option>
-                                    <option value="Awaiting for Discharge">Awaiting for Discharge</option>
-                                    <option value="Under Observation">Under Observation</option>
-                                    <option value="Waiting for Treatment">Waiting for Treatment</option>
-                                </select>
-                                <label>Bed:</label>
-                                <input
-                                    type="text"
-                                    name="bed"
-                                    value={newPatient.bed}
-                                    onChange={handleInputChange}
-                                    placeholder="Enter patient's bed"
-                                />
-                                <label>Triage:</label>
-                                <select
-                                    name="triage"
-                                    value={newPatient.triage}
-                                    onChange={handleInputChange}
-                                    required
-                                >
-                                    <option value="">Select Status</option>
-                                    <option value="L">Low</option>
-                                    <option value="M">Medium</option>
-                                    <option value="C">Critical</option>
-                                    <option value="H">High</option>
-                                    <option value="D">Deceased</option>
-                                </select>
-                                <label>Admission Date:</label>
-                                <input
-                                    type="date"
-                                    name="admissionDate"
-                                    value={newPatient.admissionDate}
-                                    onChange={handleInputChange}
-                                />
+function AdmissionsBilling ({ patientAdmissionsData, 
+                              loading, 
+                              FetchPatientAdmissions, 
+                              setQuery, 
+                              currentPage, 
+                              setCurrentPage,
+                              itemsPerPage,
+                              // modal visibility methods
+                              showBillingModal
+                            }) {  
 
-                                {/* Separate HMO and PhilHealth Discount */}
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        checked={newPatient.hmoDiscount}
-                                        onChange={(e) => setNewPatient(prev => ({ ...prev, hmoDiscount: e.target.checked }))}
-                                    />
-                                    Apply HMO Discount (10%)
-                                </label>
-                                <br />
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        checked={newPatient.philHealthDiscount}
-                                        onChange={(e) => setNewPatient(prev => ({ ...prev, philHealthDiscount: e.target.checked }))}
-                                    />
-                                    Apply PhilHealth Discount (5%)
-                                </label>
+  const refreshAdmissions = () => {
+    FetchPatientAdmissions(); 
+  };
 
-                                <h3>Receipt</h3>
-                                <table className="receipt-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Service</th>
-                                            <th>Quantity</th>
-                                            <th>Unit Cost</th>
-                                            <th>Total Cost</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {newPatient.receipt.map((item, index) => (
-                                            <tr key={index}>
-                                                <td>
-                                                    <input
-                                                        type="text"
-                                                        name="service"
-                                                        value={item.service}
-                                                        onChange={(e) => handleReceiptChange(e, index)}
-                                                        placeholder="Enter service"
-                                                    />
-                                                </td>
-                                                <td>
-                                                    <input
-                                                        type="number"
-                                                        name="quantity"
-                                                        value={item.quantity}
-                                                        onChange={(e) => handleReceiptChange(e, index)}
-                                                        placeholder="Enter quantity"
-                                                    />
-                                                </td>
-                                                <td>
-                                                    <input
-                                                        type="number"
-                                                        name="unitCost"
-                                                        value={item.unitCost}
-                                                        onChange={(e) => handleReceiptChange(e, index)}
-                                                        placeholder="Enter unit cost"
-                                                    />
-                                                </td>
-                                                <td>
-                                                    <input
-                                                        type="number"
-                                                        name="totalCost"
-                                                        value={item.totalCost}
-                                                        onChange={(e) => handleReceiptChange(e, index)}
-                                                        placeholder="Enter total cost"
-                                                    />
-                                                </td>
-                                                <td>
-                                                    <button type="button" onClick={() => removeReceiptItem(index)}>Remove</button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                                <button type="button" onClick={addReceiptItem}>Add Item</button>
-                                <br />
-                                <button type="button" onClick={handleAddPatient}>Add Patient</button>
-                            </form>
-                        </div>
-                    </div>
-                )
-            }
+  const NextPage = () => {
+    if (currentPage < patientAdmissionsData.totalPages - 1) {
+      setCurrentPage(currentPage + 1);
+    }
+  }
 
-            {/* View Receipt Modal */}
-            {
-                selectedPatient && (
-                    <div className="modal">
-                        <div className="modal-content">
-                            <span className="close" onClick={() => setSelectedPatient(null)}>&times;</span>
-                            <h2>City Hospital - Receipt</h2>
-                            <p><strong>City Hospital</strong></p>
-                            <p>123 Health Ave, Medtown, USA</p>
-                            <p>Phone: (123) 456-7890</p>
-                            <h2>Receipt for {selectedPatient.name}</h2>
-                            <p><strong>Admission Date:</strong> {selectedPatient.admissionDate}</p>
-                            <p><strong>Days Stayed:</strong> {selectedPatient.daysStayed}</p>
+  const PreviousPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1);
+    }
+  }
 
-                            {/* Add Patient Status Here */}
-                            <p><strong>Status:</strong> {selectedPatient.status}</p>
+  const Search = () => {
+    setQuery(document.getElementById('searchInput').value);
+    setCurrentPage(0);
+  }
 
-                            <table className="receipt-table">
-                                <thead>
-                                    <tr>
-                                        <th>Service</th>
-                                        <th>Quantity</th>
-                                        <th>Unit Cost</th>
-                                        <th>Total Cost</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {selectedPatient.receipt.map((item, index) => (
-                                        <tr key={index}>
-                                            <td>{item.service}</td>
-                                            <td>{item.quantity}</td>
-                                            <td>{item.unitCost}</td>
-                                            <td>{item.totalCost}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
 
-                            {/* Display discount applied */}
-                            <div>
-                                {selectedPatient.hmoDiscount && (
-                                    <p><strong>HMO Discount Applied: 10%</strong></p>
-                                )}
-                                {selectedPatient.philHealthDiscount && (
-                                    <p><strong>PhilHealth Discount Applied: 5%</strong></p>
-                                )}
-                            </div>
+  return (
+    <div className="inventory-container">
 
-                            <p><strong>Total Due:</strong> ₱{calculateTotalWithDiscount(selectedPatient.receipt, selectedPatient.hmoDiscount, selectedPatient.philHealthDiscount).toFixed(2)}</p>
+      <h4 className="text-2xl mb-2">Admissions Billing</h4>
 
-                            <p>Thank you for choosing City Hospital. For questions, call our billing department at (123) 456-7890.</p>
+      {/* Search Bar */}
+      
+        <div className='flex gap-4'>
+          <input
+            type="text"
+            className="w-full "
+            id="searchInput"
+            placeholder="Search ER Admissions"
+          />
+          <button onClick={Search} className="btn btn-primary h-full !px-8">Search</button>
+        </div>
+      
 
-                            <button onClick={() => setSelectedPatient(null)} className="close-btn">
-                                Close
-                            </button>
+      {/* Admissions Table */}
+      <table>
+        <thead>
+          <tr>
+            <th>id</th>
+            <th>Name</th>
+            <th>Bed Location</th>
+            <th>Status</th>
+            <th>Billing Status</th>
+            <th className='!text-center'>Actions</th>
+          </tr>
+        </thead>
+        {loading ? (
+          <tbody>
+            <tr>
+              <td colSpan="5">Loading...</td>
+            </tr>
+          </tbody>
+        ) : (
+          <tbody>
+            {patientAdmissionsData?.content?.map((item) => (
+              <tr key={item.id}>
+                <td className='text-black'>{item.id}</td>
+                
+                <td className='text-black'>{item.patientName}</td>
+                <td className='text-black'>{item.patientBedLocCode}</td>
+                <td className='text-black'>
+                  <span className={"badge badge-solid text-nowrap " + 
+                    (item.patientStatus === 'pre-admission' ? 'badge-warning'
+                      : item.patientStatus === 'in-surgery' ? 'badge-error'
+                      : item.patientStatus === 'admitted-ER' ? 'badge-success'
+                      : item.patientStatus.includes('pending-pay') ? 'badge-accent'
+                      : (item.patientStatus === 'paid' || item.patientStatus === 'collateralized') ? 'badge-info'
+                      : 'badge-neutral')
+                  }> {item.patientStatus} </span>
 
-                        </div>
-                    </div>
-                )
-            }
+                </td>
+                <td>
+                  <span className={"badge badge-solid " + 
+                    (item.patientBillingStatus === 'paid' ? 'badge-success'
+                      : item.patientBillingStatus === 'collateralized' ? 'badge-warning'
+                      : 'badge-neutral')
+                  }>{item.patientBillingStatus}</span>
+                </td>
+                <td className='text-black flex justify-center gap-2'>
+                  <button type="button" onClick={() => showBillingModal(item.id)} className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit'>
+                    <span className="">Bill</span>
+                  </button>
+                  <button type="button" className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit'>
+                    <span className="">Order</span>
+                  </button>
+                  <button type="button" className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit'>
+                    <span className="">Discounts</span>
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        )}
+      </table>
+      {/* Pagination Controls */}
+      {
+        !loading && patientAdmissionsData?.pageable ? (
+          <div className="pagination-controls">
+            <button 
+              onClick={PreviousPage} 
+              disabled={currentPage === 0}
+            >
+              Previous
+            </button>
+            <span className='text-black'>
+              Page {currentPage + 1} of {patientAdmissionsData.totalPages}
+            </span>
+            <button 
+              onClick={NextPage} 
+              disabled={currentPage === patientAdmissionsData.totalPages}
+            >
+              Next
+            </button>
+          </div>
+        ) : null
+      }
 
-        </div >
-    );
+    </div>
+  );
 };
 
-export default BillingPage;
+function BillingModal({ admissionID, closeModal }) {
+  const { serverUrl } = useConfig();
+  const [loading, setLoading] = useState(false);
+  const [billingData, setBillingData] = useState({});
+  const [currentPage, setCurrentPage] = useState(0);
+
+  const FetchBilling = () => {
+    if (!serverUrl) return;
+    setLoading(true)
+    secureFetch(`${serverUrl}/patient-billing/all/${admissionID}?` + new URLSearchParams({
+      page: currentPage,
+      size: 5
+    }).toString(), 
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+    })
+    .then(response => response.json())
+    .then(data => {
+      setBillingData(data)
+    })
+    .catch(error => console.error(error)).
+    finally(() => {
+      setLoading(false)
+    })
+  }
+
+  useEffect(() => {
+    FetchBilling();
+  }, [serverUrl, currentPage])
+
+  return (
+    <div className='qe-modal-overlay'>     
+    { loading ? (
+      <span>Loading...</span>
+      ) : (
+        <div className="qe-modal gap-4 !w-fit !max-w-fit flex">
+          <div className="inventory-container">
+
+            <div className="inventory-container">
+              <h4 className="text-2xl mb-2">Inventory</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>id</th>
+                    <th>Details</th>
+                    <th>Quantity</th>
+                    <th>Unit Price</th>
+                    <th>Discount</th>
+                    <th>Total</th>
+                    <th className='!text-center'>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                      <tr>
+                        <td colSpan="5">Loading...</td>
+                      </tr>
+                  ) : (
+                    billingData?.content?.map((item) => (
+                      <tr key={item.id}>
+                        <td className='text-black'>{item.id}</td>
+                        <td className='text-black'>{item.billingItemDetails}</td>
+                        <td className='text-black'>{item.billingItemQty}</td>
+                        <td className='text-black'>{item.billingItemPrice}</td>
+                        <td className='text-black'>{item.billingItemDiscount}</td>
+                        <td className='text-black'>{(item.billingItemQty * item.billingItemPrice) - item.billingItemDiscount}</td>
+                        <td className='text-black flex justify-center'>
+                          <button type="button" onClick={() => showUpdateModal(item.id)} className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit'>
+                            <span className="icon-[tabler--pencil] text-neutral-500"></span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+
+              </table>
+            </div>
+
+            <button onClick={closeModal} className="btn btn-secondary">Close</button>
+          </div>
+        </div>
+      )
+    }
+    </div>
+  )
+
+}
+
+// App Component (Main Entry Point)
+function App() {  
+  const { serverUrl } = useConfig();
+  const [patientAdmissionsData, setPatientAdmissionsData] = useState({});
+  const [query, setQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(8);
+  const [loading, setLoading] = useState(false);
+
+  const FetchPatientAdmissions = () => {
+    if (!serverUrl) return;
+    setLoading(true)
+    secureFetch(`${serverUrl}/patient-admissions/search?` + new URLSearchParams({
+      query: query,
+      page: currentPage,
+      size: itemsPerPage
+    }).toString(), 
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+    })
+    .then(response => response.json())
+    .then(data => {
+      setPatientAdmissionsData(data)
+    })
+    .catch(error => console.error(error)).
+    finally(() => {
+      setLoading(false)
+    })
+  }
+  
+  useEffect(() => {
+    FetchPatientAdmissions();
+  }, [query, currentPage, itemsPerPage, serverUrl]);
+  
+  // SHOW/HIDE MODAL METHODS
+  const [admissionID, setAdmissionID] = useState(null);
+
+  const [billingModalVisible, setBillingModalVisible] = useState(false);
+  const showBillingModal = (id) => {
+    console.log(id)
+    setAdmissionID(id);
+    setBillingModalVisible(true);
+  }
+  const closeBillingModal = () => {
+    setBillingModalVisible(false);
+  }
+  
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'row', height: '100vh', position: 'relative' }}>
+      <Sidebar />
+      <div className="main-container">
+        <div className="content-container">
+          {/* Inventory */}
+          <AdmissionsBilling
+            patientAdmissionsData={patientAdmissionsData}
+            loading={loading}
+            FetchPatientAdmissions={FetchPatientAdmissions}
+            setQuery={setQuery}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            itemsPerPage={itemsPerPage}
+
+            showBillingModal={showBillingModal}
+          />
+
+          {billingModalVisible &&
+            <BillingModal
+            admissionID={admissionID}
+            closeModal={closeBillingModal}
+            />
+          }
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default App;
