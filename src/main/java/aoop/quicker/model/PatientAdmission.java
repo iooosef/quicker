@@ -32,6 +32,10 @@ public class PatientAdmission {
     private String patientStatus;
 
     @Nationalized
+    @Column(name = "patientBillingStatus", nullable = false, length = 20)
+    private String patientBillingStatus = "unpaid";
+
+    @Nationalized
     @Column(name = "patientBedLocCode", nullable = false, length = 50)
     private String patientBedLocCode;
 
@@ -43,7 +47,7 @@ public class PatientAdmission {
 
     @Nationalized
     @Lob
-    @Column(name = "patientERCause")
+    @Column(name = "patientERCause", nullable = false)
     private String patientERCause;
 
 }

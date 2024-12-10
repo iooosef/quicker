@@ -213,6 +213,22 @@ public class PatientAdmissionController {
             error.put("target", "patientStatus");
             errors.add(error);
         }
+        if (model.getPatientStatus() == null || model.getPatientStatus().isEmpty()) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "validation_error");
+            error.put("message", "Patient billing status is required");
+            error.put("target", "patientBillingStatus");
+            errors.add(error);
+        }
+        if (!(model.getPatientBillingStatus().equals("unpaid") ||
+                model.getPatientBillingStatus().equals("paid") ||
+                model.getPatientBillingStatus().equals("collateralized"))) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "validation_error");
+            error.put("message", "Patient billing status is invalid");
+            error.put("target", "patientBillingStatus");
+            errors.add(error);
+        }
         if (model.getPatientBedLocCode() == null || model.getPatientBedLocCode().isEmpty()) {
             HashMap<String, String> error = new HashMap<>();
             error.put("type", "validation_error");
