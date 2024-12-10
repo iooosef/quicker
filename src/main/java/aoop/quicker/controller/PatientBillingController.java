@@ -109,7 +109,7 @@ public class PatientBillingController {
         statementOfAccount.setPhilHealthIDNumber(philHealth.getPhilHealthIDNum());
         PatientsHMO hmo = patientsHMOService.getPatientsHMOByAdmissionID(id).get();
 
-        statementOfAccount.setHmoIDNumber(hmo.getHMOIDNum());
+        statementOfAccount.setHmoIDNumber(hmo.gethMOIDNum());
         statementOfAccount.setStatus(patientAdmission.getPatientStatus());
 
         List<FeesSummaryViewModel> feesSummary = new ArrayList<>();
@@ -307,7 +307,7 @@ public class PatientBillingController {
 
     private List validateHMOApproval(Integer admissionID) {
         List errors = new ArrayList();
-        boolean isHMOApproved = patientsHMOService.getPatientsHMOByAdmissionID(admissionID).get().getHMOStatus().equals("Approved");
+        boolean isHMOApproved = patientsHMOService.getPatientsHMOByAdmissionID(admissionID).get().gethMOStatus().equals("Approved");
         if (!isHMOApproved) {
             HashMap<String, String> error = new HashMap<>();
             error.put("type", "invalid_input_error");
