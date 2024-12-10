@@ -174,6 +174,32 @@ public class PatientBillingController {
         return ResponseEntity.ok(result);
     }
 
+    @PostMapping(value="/billing", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> addPatientBilling(@RequestBody PatientBilling model) {
+        List errors = new ArrayList();
+        errors.addAll(validate(model.getAdmissionID(), model));
+        errors.addAll(validatePendingPayStatus(model.getAdmissionID()));
+        var targetSupply = supplyService.getSupplyByName(model.getBillingItemDetails());
+        boolean isSupplySupplyType = targetSupply.isPresent() && targetSupply.get().getSupplyType().contains("supply:");
+        if (isSupplySupplyType) {
+            Integer newSupplyQty = targetSupply.get().getSupplyQty() - model.getBillingItemQty();
+            if (newSupplyQty < 0) {
+                HashMap<String, String> error = new HashMap<>();
+                error.put("type", "invalid_input_error");
+                error.put("message", "Insufficient supply quantity.");
+                error.put("target", "billingItemQty");
+                return ResponseEntity.status(400).body(List.of(error));
+            }
+            targetSupply.get().setSupplyQty(newSupplyQty);
+            supplyService.updateSupply(targetSupply.get().getId(), targetSupply.get());
+        }
+        if (!errors.isEmpty()) {
+            return ResponseEntity.status(400).body(errors);
+        }
+
+        return ResponseEntity.ok(patientBillingService.savePatientBilling(model));
+    }
+
     @PutMapping(value="/billing/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> updatePatientBilling(@PathVariable int id, @RequestBody PatientBilling model) {
         List errors = new ArrayList();
@@ -293,7 +319,6 @@ public class PatientBillingController {
 
     private List validate(Integer admissionID, PatientBilling model) {
         List errors = new ArrayList();
-
         if (model.getBillingItemDiscount().signum() < 0) {
             HashMap<String, String> error = new HashMap<>();
             error.put("type", "invalid_input_error");
