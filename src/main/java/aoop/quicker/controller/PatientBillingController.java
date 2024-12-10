@@ -178,7 +178,6 @@ public class PatientBillingController {
     public ResponseEntity<?> addPatientBilling(@RequestBody PatientBilling model) {
         List errors = new ArrayList();
         errors.addAll(validate(model.getAdmissionID(), model));
-        errors.addAll(validatePendingPayStatus(model.getAdmissionID()));
         var targetSupply = supplyService.getSupplyById(Integer.parseInt(model.getBillingItemDetails())); // details from client are supply id
         boolean isSupplySupplyType = targetSupply.isPresent() && targetSupply.get().getSupplyType().contains("supply:");
         if (isSupplySupplyType) {
