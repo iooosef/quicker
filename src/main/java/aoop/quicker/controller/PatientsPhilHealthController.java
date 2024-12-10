@@ -4,9 +4,7 @@ import aoop.quicker.model.PatientsPhilHealth;
 import aoop.quicker.service.PatientsPhilHealthService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +25,7 @@ public class PatientsPhilHealthController {
     }
 
     @RequestMapping(value="/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> getPatientsPhilHealthByAdmissionID(Integer id) {
+    public ResponseEntity<?> getPatientsPhilHealthByAdmissionID(@PathVariable Integer id) {
         List errors = new ArrayList();
         Optional<PatientsPhilHealth> patientsPhilHealth = patientsPhilHealthService.getPatientsPhilHealthByAdmissionID(id);
         if (!patientsPhilHealth.isPresent()) {
@@ -41,8 +39,8 @@ public class PatientsPhilHealthController {
         return ResponseEntity.ok(patientsPhilHealth);
     }
 
-    @RequestMapping(value="/patient", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> addPatientsPhilHealth(PatientsPhilHealth model) {
+    @PostMapping(value="/patient", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> addPatientsPhilHealth(@RequestBody PatientsPhilHealth model) {
         List errors = validatePatientsPhilHealth(model.getAdmissionID(), model);
         if (!errors.isEmpty()) {
             return ResponseEntity.status(400).body(errors);
@@ -55,7 +53,7 @@ public class PatientsPhilHealthController {
     }
 
     @PutMapping(value="/patient/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> updatePatientsPhilHealth(Integer id, PatientsPhilHealth model) {
+    public ResponseEntity<?> updatePatientsPhilHealth(@PathVariable Integer id, @RequestBody PatientsPhilHealth model) {
         List errors = validatePatientsPhilHealth(id, model);
         if (!errors.isEmpty()) {
             return ResponseEntity.status(400).body(errors);
