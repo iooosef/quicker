@@ -57,4 +57,8 @@ public class PatientBillingService {
         return patientBillingRepository.save(patientBilling);
     }
 
+    public void deletePatientBilling(Integer id) {
+        patientBillingRepository.deleteById(id);
+    }
+
 }

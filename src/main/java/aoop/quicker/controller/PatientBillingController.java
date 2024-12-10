@@ -33,6 +33,11 @@ public class PatientBillingController {
     private final String PHILHEALTH_DISCOUNT_DETAILS = "PhilHealth Discount";
     private final String HMO_DISCOUNT_DETAILS = "HMO Discount";
     private final BigDecimal PWD_SENIOR_DISCOUNT_RATE = new BigDecimal("0.20");
+    private final ArrayList<String> UNDELETEABLE_DETAILS = new ArrayList<String>() {{
+        add("Emergency Room Fee");
+        add(PHILHEALTH_DISCOUNT_DETAILS);
+        add(HMO_DISCOUNT_DETAILS);
+    }};
 
     public PatientBillingController(PatientBillingService patientBillingService, SupplyService supplyService, PatientService patientService, PatientAdmissionService patientAdmissionService, PatientsPhilHealthService patientsPhilHealthService, PatientsHMOService patientsHMOService) {
         this.patientBillingService = patientBillingService;
@@ -159,6 +164,36 @@ public class PatientBillingController {
         return ResponseEntity.ok(patientBillingService.savePatientBilling(model));
     }
 
+    @PutMapping(value="/billing/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> updatePatientBilling(@PathVariable int id, @RequestBody PatientBilling model) {
+        List errors = new ArrayList();
+        errors.addAll(validate(model.getAdmissionID(), model));
+        boolean toBeDeleted = model.getBillingItemQty() <= 0;
+        boolean isUndeletable = UNDELETEABLE_DETAILS.contains(model.getBillingItemDetails());
+        if (toBeDeleted && isUndeletable) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "invalid_input_error");
+            error.put("message", "Cannot delete this billing item");
+            error.put("target", "model");
+            errors.add(error);
+        }
+        if (!toBeDeleted && model.getBillingItemQty() < 0) {
+            HashMap<String, String> error = new HashMap<>();
+            error.put("type", "invalid_input_error");
+            error.put("message", "Quantity must be greater than zero");
+            error.put("target", "model");
+            errors.add(error);
+        }
+        if (!errors.isEmpty()) {
+            return ResponseEntity.status(400).body(errors);
+        }
+        if (toBeDeleted) {
+            patientBillingService.deletePatientBilling(id);
+            return ResponseEntity.ok("Deleted " + model.getBillingItemDetails() + " billing item.");
+        }
+        return ResponseEntity.ok(patientBillingService.updatePatientBilling(id, model));
+    }
+
     private void addSeniorOrPWDDiscount(int admissionID) {
         int patientID = patientAdmissionService.getPatientAdmissionById(admissionID).get().getPatientID();
         Patient patient = patientService.getPatientById(patientID).get();
@@ -210,6 +245,7 @@ public class PatientBillingController {
 
     private List validate(Integer admissionID, PatientBilling model) {
         List errors = new ArrayList();
+
         if (model.getBillingItemDiscount().signum() < 0) {
             HashMap<String, String> error = new HashMap<>();
             error.put("type", "invalid_input_error");
