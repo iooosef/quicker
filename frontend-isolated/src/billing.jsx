@@ -194,7 +194,7 @@ function AdmissionsBilling ({ patientAdmissionsData,
             </span>
             <button 
               onClick={NextPage} 
-              disabled={currentPage === patientAdmissionsData.totalPages}
+              disabled={patientAdmissionsData.totalPages === 1 || (currentPage === patientAdmissionsData.totalPages)}
             >
               Next
             </button>
@@ -211,6 +211,7 @@ function BillingModal({ admissionID, closeModal }) {
   const [loading, setLoading] = useState(false);
   const [billingData, setBillingData] = useState({});
   const [currentPage, setCurrentPage] = useState(0);
+  const [editState, setEditState] = useState({ id: null, newQty: 0 });
 
   const FetchBilling = () => {
     if (!serverUrl) return;
@@ -238,13 +239,65 @@ function BillingModal({ admissionID, closeModal }) {
     FetchBilling();
   }, [serverUrl, currentPage])
 
+  const PageNav  = (direction) => {
+    if (direction === 'next') {
+      if (currentPage < billingData.totalPages - 1) {
+        setCurrentPage(currentPage + 1);
+      }
+    } else if (direction === 'prev') {
+      if (currentPage > 0) {
+        setCurrentPage(currentPage - 1);
+      }
+    }
+  }
+
+  const handleEditQty = (id, qty) => {
+    setEditState((prevState) =>
+      prevState.id === id
+        ? { id: null, newQty: 0 } 
+        : { id, newQty: qty } 
+    );
+  };
+
+  const handleCancelEdit = () => {
+    setEditState({ id: null, newQty: 0 });
+  };
+
+  const handleUpdateQty = (id) => {
+    const updatedItem = billingData.content.find((item) => item.id === id);
+    if (!updatedItem || !serverUrl) return;
+
+    const payload = {
+      id: updatedItem.id,
+      admissionID: updatedItem.admissionID,
+      billingItemDetails: updatedItem.billingItemDetails,
+      billingItemQty: editState.newQty,
+      billingItemPrice: updatedItem.billingItemPrice,
+      billingItemDiscount: updatedItem.billingItemDiscount
+    }
+
+    secureFetch(`${serverUrl}/patient-billing/billing/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    })
+      .then((res) => {
+        if (res.ok) {
+          alert("Item updated successfully");
+        }
+        FetchBilling();
+        setEditState({ id: null, newQty: 0 });
+      })
+      .catch((error) => console.error(error));
+  };
+
   return (
     <div className='qe-modal-overlay'>     
     { loading ? (
       <span>Loading...</span>
       ) : (
         <div className="qe-modal gap-4 !w-fit !max-w-fit flex">
-          <div className="inventory-container">
 
             <div className="inventory-container">
               <h4 className="text-2xl mb-2">Inventory</h4>
@@ -270,12 +323,39 @@ function BillingModal({ admissionID, closeModal }) {
                       <tr key={item.id}>
                         <td className='text-black'>{item.id}</td>
                         <td className='text-black'>{item.billingItemDetails}</td>
-                        <td className='text-black'>{item.billingItemQty}</td>
-                        <td className='text-black'>{item.billingItemPrice}</td>
+                        <td className='text-black'>
+                        {editState.id === item.id ? (
+                          <>
+                            <input type="number" className="border rounded px-2 w-16" min="0"
+                              value={editState.newQty}
+                              onChange={(e) =>
+                                setEditState((prev) => ({
+                                  ...prev,
+                                  newQty: e.target.value,
+                                }))
+                              }
+                            />
+                            <button onClick={() => handleUpdateQty(item.id)} className="btn btn-soft btn-primary mx-1" >
+                              Update
+                            </button>
+                            <button onClick={handleCancelEdit} className="btn btn-soft btn-secondary">
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            {item.billingItemQty}
+                          </>
+                        )}
+                        </td>
+                        <td className='text-black'>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PHP' }).format(item.billingItemPrice ?? 0)}</td>
                         <td className='text-black'>{item.billingItemDiscount}</td>
-                        <td className='text-black'>{(item.billingItemQty * item.billingItemPrice) - item.billingItemDiscount}</td>
+                        <td className='text-black'>{
+                          new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PHP' })
+                          .format(((item.billingItemQty ?? 0) * (item.billingItemPrice ?? 0)) - (item.billingItemDiscount ?? 0))                        
+                        }</td>
                         <td className='text-black flex justify-center'>
-                          <button type="button" onClick={() => showUpdateModal(item.id)} className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit'>
+                          <button type="button" onClick={() => handleEditQty(item.id, item.billingItemQty)} className='btn btn-soft btn-secondary !p-2 min-h-fit !h-fit'>
                             <span className="icon-[tabler--pencil] text-neutral-500"></span>
                           </button>
                         </td>
@@ -285,16 +365,36 @@ function BillingModal({ admissionID, closeModal }) {
                 </tbody>
 
               </table>
+
+              {
+                !loading && billingData?.pageable ? (
+                  <div className="pagination-controls">
+                    <button 
+                      onClick={() => PageNav('prev')} 
+                      disabled={currentPage === 0}
+                    >
+                      Previous
+                    </button>
+                    <span className='text-black'>
+                      Page {currentPage + 1} of {billingData.totalPages}
+                    </span>
+                    <button 
+                      onClick={() => PageNav('next')} 
+                      disabled={billingData.totalPages === 1 || (currentPage === billingData.totalPages)}
+                    >
+                      Next
+                    </button>
+                  </div>
+                ) : null
+              }
             </div>
 
             <button onClick={closeModal} className="btn btn-secondary">Close</button>
-          </div>
         </div>
       )
     }
     </div>
-  )
-
+  );
 }
 
 // App Component (Main Entry Point)
