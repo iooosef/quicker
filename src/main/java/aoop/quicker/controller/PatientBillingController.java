@@ -179,7 +179,7 @@ public class PatientBillingController {
         List errors = new ArrayList();
         errors.addAll(validate(model.getAdmissionID(), model));
         errors.addAll(validatePendingPayStatus(model.getAdmissionID()));
-        var targetSupply = supplyService.getSupplyByName(model.getBillingItemDetails());
+        var targetSupply = supplyService.getSupplyById(Integer.parseInt(model.getBillingItemDetails())); // details from client are supply id
         boolean isSupplySupplyType = targetSupply.isPresent() && targetSupply.get().getSupplyType().contains("supply:");
         if (isSupplySupplyType) {
             Integer newSupplyQty = targetSupply.get().getSupplyQty() - model.getBillingItemQty();
@@ -196,7 +196,8 @@ public class PatientBillingController {
         if (!errors.isEmpty()) {
             return ResponseEntity.status(400).body(errors);
         }
-
+        model.setBillingItemDetails(targetSupply.get().getSupplyName());
+        model.setBillingItemPrice(targetSupply.get().getSupplyPrice());
         return ResponseEntity.ok(patientBillingService.savePatientBilling(model));
     }
 
