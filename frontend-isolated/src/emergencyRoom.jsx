@@ -1639,7 +1639,7 @@ function validateMedicalRecord(model) {
     foundErrors.patientMedNfoWeight = 'Weight is required';
   } 
   if (!model.patientMedNfoCOVIDVaxx) {
-    foundErrors.patientMedNfoCOVIDVaxx = 'COVID-19 Vaccination Info is required. Write NONE if no vaccination.';
+    foundErrors.patientMedNfoCOVIDVaxx = 'COVID-19 Vaccination Information is required. Write NONE if no vaccination.';
   } 
   return foundErrors;
 }

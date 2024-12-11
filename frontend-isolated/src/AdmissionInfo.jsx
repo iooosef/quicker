@@ -475,7 +475,7 @@ function AdmissionInfo({admissionID, closeModal}) {
                             {/* Medical Info */}
                             {admission.patientID && hasMedicalRecord &&
                                 <div className="inventory-container !flex-none gap-4">                   
-                                    <h4 className="text-2xl mb-2">Medical Info</h4>
+                                    <h4 className="text-2xl mb-2">Medical Information</h4>
                                     <div className='flex gap-4'>
                                         <div className="form-control w-1/2">
                                             <input type="text" defaultValue={medicalRecord.id} className="input input-floating peer" readOnly />
