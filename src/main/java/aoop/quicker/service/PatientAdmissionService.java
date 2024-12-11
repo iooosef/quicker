@@ -26,8 +26,8 @@ public class PatientAdmissionService {
     }
 
     public Page<PatientAdmission> searchPatientAdmissions(String query, Pageable pageable) {
-        Specification<PatientAdmission> specification = PatientAdmissionSpecifications.buildSpecification(query);
-        return patientAdmissionRepository.findAll(specification, pageable);
+        String[] keywords = query.split("\\s+");
+        return patientAdmissionRepository.findByKeywords(keywords, pageable);
     }
 
     public Optional<PatientAdmission> getPatientAdmissionById(Integer id) {
@@ -74,56 +74,4 @@ public class PatientAdmissionService {
 
         return existFlag;
     }
-
-    /*
-        * Inner class to build the Specification for the PatientAdmission entity
-        * This class is used to build the Predicate for the query
-        * The Predicate is used to filter the results based on the query
-        * The query can be a name, triage, status, bed location code, admit on, or out on
-        * The query is split into terms, and each term is used to build a Predicate
-        * The Predicates are then ANDed together to form the final Predicate
-        * The final Predicate is used to filter the results
-     */
-    private class PatientAdmissionSpecifications {
-        public static Specification<PatientAdmission> buildSpecification(String query) {
-            return (root, criteriaQuery, criteriaBuilder) -> { // Lambda function for Predicate building
-                if (query == null || query.isBlank()) { // No query
-                    return null;
-                }
-                Predicate finalPredicate = null;
-                String[] terms = query.split("\\s+"); // Split query into terms
-                for (String term : terms) {
-                    Predicate predicate = null;
-                    if (term.matches("\\d+")) {
-                        /*
-                         * Regex for digits: If digits, filter by quantity
-                         * \d+ - one or more digits
-                         * */
-                        predicate = criteriaBuilder.equal(root.get("patientTriage"), Integer.parseInt(term));
-                    }
-                    // regex for "before:" and "after:" search
-                    else if (term.matches("before:\\d{4}-\\d{2}-\\d{2}")) {
-                        Instant instant = Instant.parse(term.substring(7) + "T00:00:00Z");
-                        predicate = criteriaBuilder.lessThanOrEqualTo(root.get("patientAdmitOn"), instant);
-                    } else if (term.matches("after:\\d{4}-\\d{2}-\\d{2}")) {
-                        Instant instant = Instant.parse(term.substring(6) + "T00:00:00Z");
-                        predicate = criteriaBuilder.greaterThanOrEqualTo(root.get("patientAdmitOn"), instant);
-                    } else {
-                        Predicate nameContains = criteriaBuilder.like(root.get("patientName"), "%" + term + "%");
-                        Predicate statusContains = criteriaBuilder.like(root.get("patientStatus"), "%" + term + "%");
-                        Predicate bedLocCodeContains = criteriaBuilder.like(root.get("patientBedLocCode"), "%" + term + "%");
-                        predicate = criteriaBuilder.or(nameContains, statusContains, bedLocCodeContains);
-                    }
-
-                    if (finalPredicate == null) { // at first, finalPredicate is null, so we assign the first predicate
-                        finalPredicate = predicate;
-                    } else { // after the first predicate, we AND the predicates together
-                        finalPredicate = criteriaBuilder.and(finalPredicate, predicate);
-                    }
-                }
-                return finalPredicate;
-            };
-        }
-    }
-
 }
