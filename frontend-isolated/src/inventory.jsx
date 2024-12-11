@@ -207,6 +207,8 @@ function Inventory ({ showUpdateModal,
                       setCurrentPage,
                       itemsPerPage}) {  
 
+  const [activeFilter, setActiveFilter] = useState('');
+
   const refreshInventory = () => {
     FetchSupplies(); 
   };
@@ -232,7 +234,38 @@ function Inventory ({ showUpdateModal,
   return (
     <div className="inventory-container">
 
-      <h4 className="text-2xl mb-2">Inventory</h4>
+      <div className='flex flex-col gap-4 mb-4'>
+        <h4 className="text-2xl">Inventory</h4>
+        <div className='flex gap-2 flex-1'>
+          <div>Filter: </div>
+
+          <button onClick={() => {
+            setActiveFilter('test');
+            setQuery('test:');
+          }} className={"btn btn-xs btn-primary flex-1 !p-2 h-full + "
+            + (activeFilter !== 'test' && "btn-soft")
+          }>Tests</button>
+
+          <button onClick={() => {
+            setActiveFilter('treatment');
+            setQuery('treatment:');
+          }} className={"btn btn-xs btn-primary flex-1 !p-2 h-full + "
+            + (activeFilter !== 'treatment' && "btn-soft")
+          }>Treatment</button>
+
+          <button onClick={() => {
+            setActiveFilter('supply');
+            setQuery('supply:');
+          }} className={"btn btn-xs btn-primary flex-1 !p-2 h-full + "
+            + (activeFilter !== 'supply' && "btn-soft")
+          }>Supplies</button>
+          
+          <button onClick={() => {
+            setActiveFilter('');
+            setQuery('');
+          }} className="btn btn-xs btn-secondary flex-none !px-3 h-full">Reset</button>
+        </div>
+      </div>
 
       {/* Search Bar */}
       
