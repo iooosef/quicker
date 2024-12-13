@@ -221,10 +221,12 @@ function BillingModal({ admissionID, closeModal, editable }) {
   const [billingData, setBillingData] = useState({});
   const [currentPage, setCurrentPage] = useState(0);
   const [editState, setEditState] = useState({ id: null, newQty: 0 });
+  const [total, setTotal] = useState(0);
 
   const FetchBilling = () => {
     if (!serverUrl) return;
     setLoading(true)
+    setTotal(0);
     secureFetch(`${serverUrl}/patient-billing/all/${admissionID}?` + new URLSearchParams({
       page: currentPage,
       size: 5
@@ -234,7 +236,13 @@ function BillingModal({ admissionID, closeModal, editable }) {
       headers: { "Content-Type": "application/json" },
       credentials: 'include',
     })
-    .then(response => response.json())
+    .then(response => {
+      if (response.ok) {
+        solveTotal();
+        return response.json();        
+      }
+      throw new Error('Failed to fetch billing data');
+    })
     .then(data => {
       setBillingData(data)
     })
@@ -306,6 +314,19 @@ function BillingModal({ admissionID, closeModal, editable }) {
       .catch((error) => console.error(error));
   };
 
+  const solveTotal = () => {
+    let currentTotal = 0;
+    billingData?.content?.forEach(element => {
+      currentTotal += (element.billingItemQty * element.billingItemPrice) - element.billingItemDiscount;
+    });
+    setTotal(currentTotal);
+    console.log(`Total: ${currentTotal}`);
+  }
+
+  useEffect(() => {
+    solveTotal();
+  }, [billingData])
+
   return (
     <div className='qe-modal-overlay'>     
     { loading ? (
@@ -324,7 +345,7 @@ function BillingModal({ admissionID, closeModal, editable }) {
                     <th>Unit Price</th>
                     <th>Discount</th>
                     <th>Total</th>
-                    {editable && (<th>Actions</th>)}
+                    {!editable && (<th>Actions</th>)}
                   </tr>
                 </thead>
                 <tbody>
@@ -406,6 +427,14 @@ function BillingModal({ admissionID, closeModal, editable }) {
                 ) : null
               }
             </div>
+            {!loading && (
+              <div className="stats">
+              <div className="stat">
+                <div className="stat-title">Total Cost </div>
+                <div className="stat-value">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PHP' }).format(total ?? 0)}</div>
+              </div>
+            </div>
+            )}
 
             <button onClick={closeModal} className="btn btn-secondary">Close</button>
         </div>
