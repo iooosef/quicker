@@ -36,7 +36,7 @@ public class PatientsHMOController {
     @RequestMapping(value="/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> getPatientsHMOByAdmissionID(@PathVariable Integer id) {
         List errors = new ArrayList();
-        // validate
+        // validate the admission ID
         Optional<PatientsHMO> patientsHMO = patientsHMOService.getPatientsHMOByAdmissionID(id);
         if (!patientsHMO.isPresent()) {
             HashMap<String, String> error = new HashMap<>();
@@ -49,31 +49,37 @@ public class PatientsHMOController {
         return ResponseEntity.ok(patientsHMO.get());
     }
 
+    // Handle the request to add the patient HMO
     @PostMapping(value="/patient", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> addPatientsHMO(@RequestBody PatientsHMO model) {
-        List errors = validatePatientsHMO(model.getAdmissionID(), model);
+        List errors = validatePatientsHMO(model.getAdmissionID(), model); // validate the patient HMO
         if (!errors.isEmpty()) {
             return ResponseEntity.status(400).body(errors);
         }
+        // set the request date and status
         Instant now = Instant.now();
         model.sethMORequestOn(now);
         model.sethMOStatus("Pending");
-        PatientsHMO patientsHMO = patientsHMOService.addPatientsHMO(model);
+        PatientsHMO patientsHMO = patientsHMOService.addPatientsHMO(model); // add the patient HMO
         return ResponseEntity.ok(patientsHMO);
     }
 
+    // Handle the request to update the patient HMO by admission ID
     @PutMapping(value="/patient/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> updateHMOByAdmissionID(@PathVariable Integer id, @RequestBody PatientsHMO model) {
-        List errors = validatePatientsHMO(id, model);
+        List errors = validatePatientsHMO(id, model); // validate the patient HMO
         if (!errors.isEmpty()) {
             return ResponseEntity.status(400).body(errors);
         }
+        // update the patient HMO
         PatientsHMO updatedPatientsHMO = patientsHMOService.updatePatientsHMO(id, model);
         return ResponseEntity.ok(updatedPatientsHMO);
     }
 
+    // Helper method to validate the patient HMO
     private List validatePatientsHMO(Integer admissionID, PatientsHMO model) {
         List errors = new ArrayList();
+        // check if the HMO for this patient exists
         boolean hmoForThisPatientExists = patientsHMOService.getPatientsHMOByAdmissionID(admissionID).isPresent();
         if (hmoForThisPatientExists) {
             HashMap<String, String> error = new HashMap<>();
@@ -82,6 +88,8 @@ public class PatientsHMOController {
             error.put("target", "model");
             errors.add(error);
         }
+
+        // check if the required fields are provided
         if (model.getAdmissionID() == null) {
             HashMap<String, String> error = new HashMap<>();
             error.put("type", "validation_error");
