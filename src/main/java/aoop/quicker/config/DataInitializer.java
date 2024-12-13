@@ -6,6 +6,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+/*
+ * DataInitializer
+ * - to initialize the database with an admin user
+ */
 @Component
 public class DataInitializer implements CommandLineRunner {
 
@@ -25,7 +29,7 @@ public class DataInitializer implements CommandLineRunner {
             User adminUser = new User();
             adminUser.setUserName("admin");
             adminUser.setUserPassword(passwordEncoder.encode("admin1234"));
-            adminUser.setUserRoles("ADMIN");  // Assigning a role
+            adminUser.setUserRoles("ADMIN");
 
             // Save user to the database
             userRepository.save(adminUser);

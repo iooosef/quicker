@@ -20,15 +20,20 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.*;
-
+/*
+    * AuthController
+    * - to handle the authentication and authorization of the application
+    * - Springboot REST controller
+ */
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/auth") // Define the base path for the controller
 public class AuthController {
     private AuthenticationManager authenticationManager;
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
-    private Logger logger = LoggerFactory.getLogger(AuthController.class);
 
+    // Constructor for the AuthController
+    // - allow dependency injection of the authentication manager, user repository, and password encoder
     public AuthController(
             AuthenticationManager authenticationManager,
             UserRepository userRepository,
@@ -38,12 +43,14 @@ public class AuthController {
         this.passwordEncoder = passwordEncoder;
     }
 
+    // Handle the login request
     @RequestMapping(value="/login", produces=MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> authenticateUser(@RequestBody AuthViewModel model) {
         HashMap<String, String> response = new HashMap<>();
         List errors = new ArrayList();
 
         try {
+            // Authenticate the user
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             model.getUserName(),
@@ -51,9 +58,11 @@ public class AuthController {
                     )
             );
 
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-            String role = authentication.getAuthorities().stream().findFirst().get().getAuthority();
-            String loginDatetime = java.time.LocalDateTime.now().toString();
+            // Set the authentication context
+            SecurityContextHolder.getContext().setAuthentication(authentication); // set the authentication context
+            String role = authentication.getAuthorities().stream().findFirst().get().getAuthority(); // get the first role in collection of roles
+            String loginDatetime = java.time.LocalDateTime.now().toString(); // get current datetime
+            // build the response
             response.put("username", model.getUserName());
             response.put("role", role);
             response.put("loginDatetime", loginDatetime);
@@ -61,12 +70,14 @@ public class AuthController {
             return new ResponseEntity<>(response, HttpStatus.OK);
 
         } catch (BadCredentialsException e) {
+            // Handle the bad credentials exception
             HashMap<String, String> error = new HashMap<>();
             error.put("type", "authentication_error");
             error.put("message", "Invalid username or password");
             error.put("target", "model");
             errors.add(error);
         } catch (AuthenticationException e) {
+            // Handle the authentication exception
             HashMap<String, String> error = new HashMap<>();
             error.put("type", "authentication_error");
             error.put("message", "Authentication failed");
@@ -75,13 +86,14 @@ public class AuthController {
         return new ResponseEntity<>(Collections.singletonMap("errors", errors), HttpStatus.UNAUTHORIZED);
     }
 
-
+    // Handle the registration request
     @RequestMapping(value="/register", produces=MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> registerUser(@RequestBody AuthViewModel model) {
         HashMap<String, String> response = new HashMap<>();
         List errors = new ArrayList();
-        boolean userExist = userRepository.findByUserName(model.getUserName()).isPresent();
+        boolean userExist = userRepository.findByUserName(model.getUserName()).isPresent(); // Check if the user already exists
         if (userExist) {
+            // Handle the user already exists error
             HashMap<String, String> error = new HashMap<>();
             error.put("type", "validation_error");
             error.put("message", "User already exists");
@@ -92,10 +104,11 @@ public class AuthController {
 
         User user = new User();
         user.setUserName(model.getUserName());
-        user.setUserPassword(passwordEncoder.encode(model.getUserPassword()));
+        user.setUserPassword(passwordEncoder.encode(model.getUserPassword())); // Encrypt the password
         user.setUserRoles(model.getUserRoles());
 
-        userRepository.save(user);
+        userRepository.save(user); // Save the user to the database
+        // Build the response
         response.put("userName", user.getUserName());
         response.put("userRoles", user.getUserRoles());
         return new ResponseEntity<>(response, HttpStatus.CREATED);

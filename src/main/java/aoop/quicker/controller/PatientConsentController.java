@@ -16,28 +16,39 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 
+/*
+ * PatientConsentController class
+ *  - Handles patient consent requests
+ *  - Spring Boot REST Controller
+ */
 @RestController
 @RequestMapping("/patient-consents")
 public class PatientConsentController {
     private final Logger log = LoggerFactory.getLogger(PatientConsentController.class);
     private final PatientConsentService patientConsentService;
 
+    // Constructor for PatientConsentController
+    // - allow dependency injection for PatientConsentService
     public PatientConsentController(PatientConsentService patientConsentService) {
         this.patientConsentService = patientConsentService;
     }
 
+    // Handle GET request for all patient consents
     @RequestMapping(value="/all", produces= MediaType.APPLICATION_JSON_VALUE)
     public Page<PatientConsent> getPatientConsents(@RequestParam int page, @RequestParam int size) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size); // Create Pageable object
+        // Get all patient consents as a Page object
         Page<PatientConsent> patientConsents = patientConsentService.getAllPatientConsents(pageable);
         log.info(patientConsents.toString());
         return patientConsents;
     }
 
+    // Handle GET request for a specific patient consent
     @RequestMapping(value="/{admissionId}", produces=MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> getPatientConsent(@RequestParam int admissionId) {
         List errors = new ArrayList();
         Optional<PatientConsent> patientConsent = patientConsentService.getPatientConsentByAdmissionId(admissionId);
+        // Validate if patient consent exists
         if (!patientConsent.isPresent()) {
             HashMap<String, String> error = new HashMap<>();
             error.put("type", "not_found_error");
@@ -49,10 +60,12 @@ public class PatientConsentController {
         return ResponseEntity.ok(patientConsent.get());
     }
 
+    // Handle POST request to add a patient consent
     @PostMapping(value="/patient-consent", produces= MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> addPatientConsent(@RequestBody PatientConsent patientConsent) {
-        List errors = validateModel(patientConsent);
+        List errors = validateModel(patientConsent); // Validate patient consent model
         boolean exists = patientConsentService.getPatientConsentByAdmissionId(patientConsent.getAdmissionID()).isPresent();
+        // Validate if patient consent already exists
         if (exists) {
             HashMap<String, String> error = new HashMap<>();
             error.put("type", "validation_error");
@@ -60,14 +73,16 @@ public class PatientConsentController {
             error.put("target", "admissionID");
             errors.add(error);
         }
-        if (!errors.isEmpty()) {
+        if (!errors.isEmpty()) { // return any/all errors
             return ResponseEntity.status(400).body(errors);
         }
-        return ResponseEntity.ok(patientConsentService.addPatientConsent(patientConsent));
+        return ResponseEntity.ok(patientConsentService.addPatientConsent(patientConsent)); // Add patient consent
     }
 
+    // helper method to validate patient consent model
     private List validateModel(PatientConsent patientConsent) {
         List errors = new ArrayList();
+        // Validate required fields
         if (patientConsent.getAdmissionID() == null) {
             HashMap<String, String> error = new HashMap<>();
             error.put("type", "validation_error");

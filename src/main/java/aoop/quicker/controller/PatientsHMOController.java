@@ -16,19 +16,27 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 
+/* PatientsHMOController
+ * - to handle the patient HMO operations
+ * - Spring Boot REST controller
+ */
 @RestController
 @RequestMapping("/patients-hmo")
 public class PatientsHMOController {
     private final Logger log = LoggerFactory.getLogger(PatientsHMOController.class);
     private final PatientsHMOService patientsHMOService;
 
+    // Constructor for the PatientsHMOController
+    // - allow dependency injection of the patients HMO service
     public PatientsHMOController(PatientsHMOService patientsHMOService, View error) {
         this.patientsHMOService = patientsHMOService;
     }
 
+    // Handle the request to get the patient HMO by admission ID
     @RequestMapping(value="/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> getPatientsHMOByAdmissionID(@PathVariable Integer id) {
         List errors = new ArrayList();
+        // validate
         Optional<PatientsHMO> patientsHMO = patientsHMOService.getPatientsHMOByAdmissionID(id);
         if (!patientsHMO.isPresent()) {
             HashMap<String, String> error = new HashMap<>();
