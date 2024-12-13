@@ -190,6 +190,8 @@ function AdmissionInfo({admissionID, closeModal}) {
     const [patientOutOfER, setPatientOutOfER] = useState(false);
     const [hasMedicalRecord, setHasMedicalRecord] = useState(false);
 
+    const [medicalRecordLoading, setMedicalRecordLoading] = useState(false);
+
     const showLogModal = (id) => {
         setLogID(id);
         setLogModalVisible(true);
@@ -254,9 +256,11 @@ function AdmissionInfo({admissionID, closeModal}) {
     };
 
     const extractFeetAndInches = (totFt) => {
+        console.log(`totFt: ${totFt}`);
         if (totFt === null || isNaN(totFt)) return '';
         let feet = Math.floor(totFt);  
         let inches = Math.round((totFt - feet) * 12);  
+        console.log(`feet: ${feet}, inches: ${inches}`);
         return { feet, inches };
     };
 
@@ -318,7 +322,7 @@ function AdmissionInfo({admissionID, closeModal}) {
     const [medicalRecord, setMedicalRecord] = useState({});
     const FetchMedicalRecord = () => {
         if (!serverUrl) return;
-        setLoading(true)
+        setMedicalRecordLoading(true)
         secureFetch(`${serverUrl}/patients-medical-info/${(admission.patientID)}`, 
         {
         method: "GET",
@@ -329,7 +333,7 @@ function AdmissionInfo({admissionID, closeModal}) {
         .then(data => setMedicalRecord(data))
         .catch(error => console.error(error)).
         finally(() => {
-        setLoading(false)
+            setMedicalRecordLoading(false)
         })
     }
     const medicalRecordExist = () => {
@@ -473,7 +477,7 @@ function AdmissionInfo({admissionID, closeModal}) {
                                 </div>
                             }
                             {/* Medical Info */}
-                            {admission.patientID && hasMedicalRecord &&
+                            {admission.patientID && hasMedicalRecord && !medicalRecordLoading &&
                                 <div className="inventory-container !flex-none gap-4">                   
                                     <h4 className="text-2xl mb-2">Medical Information</h4>
                                     <div className='flex gap-4'>
